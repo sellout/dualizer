@@ -1,0 +1,40 @@
+name:                dualizer
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/sellout/dualizer#readme
+author:              Greg Pfeil
+maintainer:          greg@technomadic.org
+copyright:           2017 Greg Pfeil
+category:            Dual
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Dual.TH
+                     , Dual.Example
+  build-depends:       base >= 4.7 && < 5
+                     , comonad
+                     , containers
+                     , errors
+                     , template-haskell
+                     , transformers
+  default-extensions:  ConstraintKinds
+                     , DeriveFoldable
+                     , DeriveFunctor
+                     , DeriveTraversable
+                     , FlexibleContexts
+                     , FlexibleInstances
+                     , FunctionalDependencies
+                     , LambdaCase
+                     , MultiParamTypeClasses
+                     , RankNTypes
+                     , ScopedTypeVariables
+                     , TupleSections
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/sellout/dualizer
