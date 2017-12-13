@@ -1,5 +1,7 @@
 # → dualizer ←
 
+[![Join the chat at https://gitter.im/dualizer/Lobby](https://badges.gitter.im/dualizer/Lobby.svg)](https://gitter.im/dualizer/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 **Delete half (minus ε) of your Haskell code!**
 
 Dualizer allows you to eliminate the dual of all your code. Rather than implementing, say, `Comonad` directly, you can define it in terms of its dual – `Monad`:
