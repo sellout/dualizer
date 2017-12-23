@@ -25,20 +25,6 @@ makeDualClass ''Monad "Comonad" [('(>>=) , "=>>")]
 
 See `Dual.Example` for a bit more.
 
-Unfortunately, GHC doesn’t currently give us access to expressions for defined values, so automatic handling of expressions is much more limited. We have to define dual expressions _simultaneously_:
-
-```haskell
-makeDualExp
-  "foo" [t|...|] [e|...|]
-  "cofoo"
-```
-note that after this is defined, it is (and should be) impossible to tell whether it was written as above or
-```haskell
-makeDualExp
-  "cofoo" [t|...|] [e|...|]
-  "foo"
-```
-
 ## The Template Haskell You Need to Know
 
 This library is written using Template Haskell, and while it tries to minimize the familiarity needed to use it (and accepting suggestions/PRs for reducing it further), some still leaks through. Here’s what you need to know.

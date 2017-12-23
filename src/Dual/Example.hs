@@ -67,7 +67,9 @@ consume f = fmap f . sequenceA
 -- makeDualValue '(>=>) '(=>=)
 -- makeDualValue '(<=<) '(=<=)
 
-makeDualDec [d|type Algebra f a = f a -> a|] "Coalgebra"
+makeDualDec [d|type Algebra f a = f a -> a|]            "Coalgebra"
+makeDualDec [d|type GAlgebra w f a = f (w a) -> a|]     "GCoalgebra"
+makeDualDec [d|type ElgotAlgebra w f a = w (f a) -> a|] "ElgotCoalgebra"
 
 labelSelfDual '($)
 
