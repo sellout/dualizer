@@ -6,9 +6,12 @@
 module Dual.Example where
 
 import Data.Char
+import Dual.Base
+import Dual.Lens
 import Dual.TH
 
-importPreludeDuals
+importDuals baseDuals
+importDuals lensDuals
 
 -- TODO: this is much uglier than type families
 testF :: $(dualType =<< [t|Int -> Char|])
@@ -24,7 +27,7 @@ testQ = undefined :: Either Bool (Char, b -> Int) -> (Int -> a, Char)
 labelSelfDual ''Functor
 -- labelSelfDual 'fmap
 
-labelDualData ''Either ''(,)
+labelDual ''Either ''(,)
 
 -- These are done as separate dual mappings (rather than something like `labelDualClass`) to ease a lot of the issues with not-quite dual constructions.
 -- labelDual ''Monad ''Comonad -- `fail` has no dual, so it’ll fail to convert if
@@ -41,6 +44,22 @@ makeDualClass ''Applicative "Coapplicative" [('pure, "extract")]
 
 makeDualClass ''Monad "Comonad" [('(>>=) , "=>>")]
 
+
+-- FIXME: These semi-duals can be dangerous. It’s fine for overconstrained
+--        mappings (like `mapM` -> `traverse`), but in cases like `Foldable` and
+--       `Applicative`, you can’t reasonably round-trip. I.e., you can’t auto-
+--        dualize `Traversable` from `Distributive`, because the constraint will
+--        be too weak.
+labelSemiDual ''Foldable ''Functor
+
+makeDualClass ''Traversable "Distributive"
+  [ ('traverse, "cotraverse")
+  , ('sequenceA, "distribute")]
+
+-- TODO: Doesn’t really belong here, but is the dual to `collect`.
+consume :: (Traversable g, Applicative f) => (g b -> a) -> g (f b) -> f a
+consume f = fmap f . sequenceA
+
 -- labelSemiDual 'return 'extract
 
 -- makeDualValue 'join 'duplicate
@@ -48,4 +67,17 @@ makeDualClass ''Monad "Comonad" [('(>>=) , "=>>")]
 -- makeDualValue '(>=>) '(=>=)
 -- makeDualValue '(<=<) '(=<=)
 
-exportDuals "importExampleDuals"
+makeDualDec [d|type Algebra f a = f a -> a|] "Coalgebra"
+
+labelSelfDual '($)
+
+data Fix f = Fix { unfix :: f (Fix f) }
+labelSelfDual ''Fix -- not really
+labelDual 'Fix 'unfix
+
+makeDualDec
+  [d| cata :: Functor f => (f a -> a) -> Fix f -> a
+      cata f = f . fmap (cata f) . unfix |]
+  "ana"
+
+exportDuals "exampleDuals"
