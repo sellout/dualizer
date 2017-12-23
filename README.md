@@ -77,6 +77,7 @@ If one side of the construct already exists, then you can assign the duals like
 ```haskell
 makeDualType 'cata "ana"
 makeDualType ''Algebra "Coalgebra"
+```
 
 ```haskell
 makeDualClass ''Applicative "Coapplicative" [('pure, "extract")]
