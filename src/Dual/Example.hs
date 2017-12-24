@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -19,6 +20,9 @@ testF = Data.Char.ord
 
 testT :: $(dualType =<< [t|Either Int Char|])
 testT = (7, 'a')
+
+testV :: $(dualType =<< [t|Either () Char|])
+testV = undefined
 
 testQ :: $(dualType =<< [t|forall a b. Either (a -> Int) Char -> (Bool, Either Char (Int -> b))|])
 testQ = undefined :: Either Bool (Char, b -> Int) -> (Int -> a, Char)
@@ -71,7 +75,16 @@ makeDualDec [d|type Algebra f a = f a -> a|]            "Coalgebra"
 makeDualDec [d|type GAlgebra w f a = f (w a) -> a|]     "GCoalgebra"
 makeDualDec [d|type ElgotAlgebra w f a = w (f a) -> a|] "ElgotCoalgebra"
 
+makeDualDec [d|newtype NewEither a b = NewEither (Either a b)|] "NewTuple"
+makeDualDec [d|data NewEither' a b = NewEither' (Either a b)|] "NewTuple'"
+-- FIXME: doesn’t terminate
+-- makeDualDec [d|data Mu f = Mu (forall a. Algebra f a -> a)|] "NotNu"
+
 labelSelfDual '($)
+
+data Mu f = Mu (forall a. Algebra f a -> a)
+data Nu f where Nu :: Coalgebra f a -> a -> Nu f
+labelDual ''Mu ''Nu
 
 data Fix f = Fix { unfix :: f (Fix f) }
 labelSelfDual ''Fix -- not really

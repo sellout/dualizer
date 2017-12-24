@@ -10,8 +10,6 @@ labelSelfDual ''Bool
 labelDual '(&&) '(||)
 labelSelfDual 'not
 
-labelSelfDual ''Maybe
-
 labelDual ''Either ''(,)
 
 labelSelfDual ''Ordering

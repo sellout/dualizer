@@ -131,10 +131,8 @@ retrieveDuals = maybe (fail "no duals imported") pure =<< getQ
 -- FIXME: This can get into an infinite loop in the case of missing duals.
 dualType' :: Map Name Type -> Type -> ExceptT Type Q Type
 dualType' db = \case
-  ForallT vs c t       -> ForallT vs c <$> dualType' db t
-  -- FIXME: Generalize arrow handling.
---  AppT (AppT ArrowT t) (AppT (AppT ArrowT t') (AppT (AppT ArrowT t'') t''')) ->
---    AppT <$> (AppT ArrowT <$> dualType' db t''') <*> (AppT <$> (AppT ArrowT <$> dualType' db t'') <*> (AppT <$> (AppT ArrowT <$> dualType' db t') <*> dualType' db t))
+  ForallT vs c t       ->
+    ForallT vs <$> traverse (dualType' db) c <*> dualType' db t
   AppT (AppT ArrowT t) inner@(AppT (AppT ArrowT _) _) -> do
     t' <- dualType' db t
     AppT (AppT ArrowT t') <$> dualType' db inner
@@ -372,9 +370,27 @@ importDuals duals = do
 errorNewName :: Name -> Q a
 errorNewName n = fail $ "declaration introduces a new name: " ++ show n
 
+errorMultipleNewNames :: Name -> Q a
+errorMultipleNewNames n =
+  fail $ "declaration introduces multiple new names: " ++ show n
+
 errorNoNewName :: Q a
 errorNoNewName = fail "declaration doesn’t introduce a new name"
 
+dualCon' :: Map Name Type -> Name -> Con -> ExceptT Type Q Con
+dualCon' db coname = \case
+  NormalC _ bts -> NormalC coname <$> traverse (traverse $ dualType' db) bts
+  -- TODO: Probably want to dualize field names, too.
+  RecC _ vbts -> RecC coname <$> traverse (\(a, b, c) -> fmap (a, b, ) $ dualType' db c) vbts
+  InfixC bt _ bt' ->
+    InfixC
+    <$> traverse (dualType' db) bt
+    <*> pure coname
+    <*> traverse (dualType' db) bt'
+  ForallC tvbs cx cn ->
+    ForallC tvbs <$> traverse (dualType' db) cx <*> dualCon' db coname cn
+  GadtC ns bts t -> undefined -- how do we handle the multiple names here
+  RecGadtC ns vbts t -> undefined -- and here?
 
 dualizeDec :: DualMappings -> Name -> Dec -> Q [Dec]
 dualizeDec db coname d =
@@ -390,6 +406,25 @@ dualizeDec db coname d =
           ValD (VarP coname)
             <$> dualBody' newMap b
             <*> traverse (dualDec' newMap) ds
+        DataD cx n tvbs k [cn] dcs ->
+          withExceptT Left
+          $ DataD
+          <$> traverse (dualType' (_dualTypes db)) cx
+          <*> pure coname
+          <*> pure tvbs
+          <*> pure k
+          <*> ((: []) <$> dualCon' (_dualTypes db) coname cn)
+          <*> pure dcs -- Should actually dualize this
+        DataD _ n _ _ _ _ -> lift $ errorMultipleNewNames n
+        NewtypeD cx n tvbs k cn dcs ->
+          withExceptT Left
+          $ NewtypeD
+          <$> traverse (dualType' (_dualTypes db)) cx
+          <*> pure coname
+          <*> pure tvbs
+          <*> pure k
+          <*> dualCon' (_dualTypes db) coname cn
+          <*> pure dcs -- Should actually dualize this
         TySynD _ tvbs t ->
           TySynD coname tvbs <$> withExceptT Left (dualType' (_dualTypes db) t)
         SigD _ t -> SigD coname <$> withExceptT Left (dualType' (_dualTypes db) t)
