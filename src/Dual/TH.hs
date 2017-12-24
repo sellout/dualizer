@@ -392,6 +392,11 @@ dualCon' db coname = \case
   GadtC ns bts t -> undefined -- how do we handle the multiple names here
   RecGadtC ns vbts t -> undefined -- and here?
 
+dualTySynEqn' :: Map Name Type -> TySynEqn -> ExceptT Type Q TySynEqn
+dualTySynEqn' db (TySynEqn ts t) =
+  TySynEqn <$> traverse (dualType' db) ts <*> dualType' db t
+
+
 dualizeDec :: DualMappings -> Name -> Dec -> Q [Dec]
 dualizeDec db coname d =
   handleMissingDual
@@ -428,6 +433,12 @@ dualizeDec db coname d =
         TySynD _ tvbs t ->
           TySynD coname tvbs <$> withExceptT Left (dualType' (_dualTypes db) t)
         SigD _ t -> SigD coname <$> withExceptT Left (dualType' (_dualTypes db) t)
+        DataFamilyD _ tvbs k -> pure $ DataFamilyD coname tvbs k
+        OpenTypeFamilyD (TypeFamilyHead n tvbs frs ia) ->
+          pure . OpenTypeFamilyD $ TypeFamilyHead coname tvbs frs ia
+        ClosedTypeFamilyD (TypeFamilyHead n tvbs frs ia) tses ->
+          ClosedTypeFamilyD (TypeFamilyHead coname tvbs frs ia)
+          <$> withExceptT Left (traverse (dualTySynEqn' $ _dualTypes db) tses)
         _ -> lift $ errorNoNewName
 
 -- | Creates both the original declaration and its dual. Should only work for

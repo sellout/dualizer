@@ -80,6 +80,20 @@ makeDualDec [d|data NewEither' a b = NewEither' (Either a b)|] "NewTuple'"
 -- FIXME: doesn’t terminate
 -- makeDualDec [d|data Mu f = Mu (forall a. Algebra f a -> a)|] "NotNu"
 
+makeDualDec [d|data family TestA a|] "DualA"
+makeDualDec [d|type family TestB a|] "DualB"
+makeDualDec
+  [d| type family TestC a where
+        TestC (Either b c) = b
+        TestC Int = Char |]
+  "DualC"
+
+-- makeDualDec
+--   [d| (>^>) :: (a -> b) -> (b -> c) -> a -> c
+--       (>^>) = (>>>) |]
+--   "<^<"
+-- withDual [d| { infix 3 >^> } |]
+
 labelSelfDual '($)
 
 data Mu f = Mu (forall a. Algebra f a -> a)
