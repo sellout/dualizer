@@ -23,7 +23,6 @@ module Dual.TH
 
 import           Control.Arrow
 import           Control.Comonad
-import           Control.Error.Util
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Trans.Class
@@ -164,6 +163,12 @@ dualType' db = \case
   ConstraintT          -> pure ConstraintT
   LitT l               -> pure $ LitT l
   WildCardT            -> pure WildCardT
+
+exceptT f g =
+  (\case
+      Left a  -> f a
+      Right a ->  g a)
+  <=< runExceptT
 
 -- | Returns a type that is the dual of the input type.
 dualType :: Type -> Q Type

@@ -1,11 +1,13 @@
 name:                dualizer
 version:             0.1.0.0
--- synopsis:
+synopsis:            Automatically generate dual constructions.
 -- description:
 homepage:            https://github.com/sellout/dualizer#readme
 author:              Greg Pfeil
 maintainer:          greg@technomadic.org
 copyright:           2017 Greg Pfeil
+license:             AGPL
+license-file:        LICENSE
 category:            Dual
 build-type:          Simple
 extra-source-files:  README.md
@@ -13,13 +15,15 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Dual.TH
+  exposed-modules:     Dual.Base
                      , Dual.Example
+                     , Dual.Lens
+                     , Dual.Prelude
+                     , Dual.TH
   build-depends:       base >= 4.7 && < 5
                      , bifunctors
                      , comonad
                      , containers
-                     , errors
                      , lens
                      , template-haskell
                      , transformers

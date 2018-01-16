@@ -6,7 +6,9 @@
 
 module Dual.Example where
 
+import Control.Arrow
 import Data.Char
+import Data.Void
 import Dual.Base
 import Dual.Lens
 import Dual.TH
@@ -22,16 +24,13 @@ testT :: $(dualType =<< [t|Either Int Char|])
 testT = (7, 'a')
 
 testV :: $(dualType =<< [t|Either () Char|])
-testV = undefined
+testV = undefined :: (Void, Char)
+
+testV' :: $(dualType =<< [t|((), Char)|])
+testV' = Right 'a' :: Either Void Char
 
 testQ :: $(dualType =<< [t|forall a b. Either (a -> Int) Char -> (Bool, Either Char (Int -> b))|])
 testQ = undefined :: Either Bool (Char, b -> Int) -> (Int -> a, Char)
-
--- Not sure if this will need different ones for Class, Data, Value, etc.
-labelSelfDual ''Functor
--- labelSelfDual 'fmap
-
-labelDual ''Either ''(,)
 
 -- These are done as separate dual mappings (rather than something like `labelDualClass`) to ease a lot of the issues with not-quite dual constructions.
 -- labelDual ''Monad ''Comonad -- `fail` has no dual, so it’ll fail to convert if
