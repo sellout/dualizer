@@ -290,7 +290,7 @@ labelSelfDual name = do
 
 -- | This provides a mapping one way, but not the other. Useful for aliased
 --   functions (`return`) and overconstrained versions (e.g., mapping
---  `traverse ↔ distribute` but also `forM → distribute`).
+--  `traverse ↔ distribute` but also `mapM → distribute`).
 labelSemiDual :: Name -> Name -> Q [Dec]
 labelSemiDual name coname = do
   duals <- retrieveDuals
