@@ -1,10 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- | Dual mappings for types in the 'Prelude'.
 module Dual.Prelude where
 
 import Dual.TH
 
-importDuals initialDuals
+importDuals emptyDuals
 
 labelSelfDual ''Bool
 labelDual '(&&) '(||)
@@ -85,4 +86,5 @@ labelDual 'putStrLn 'getLine
 
 labelDual 'readFile 'writeFile
 
+-- | Duals for the 'Prelude'.
 exportDuals "preludeDuals"

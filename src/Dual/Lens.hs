@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- | Dual mappings for types in 'lens'.
 module Dual.Lens where
 
 import Control.Lens
@@ -15,4 +16,5 @@ labelSelfDual ''Iso
 
 labelSelfDual ''Equality
 
+-- | Duals for 'lens'.
 exportDuals "lensDuals"

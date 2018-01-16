@@ -4,7 +4,26 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 
-module Dual.Example where
+-- | This should be tests, but if you look for the source of this module,
+--   you’ll see how to use the package.
+module Dual.Example
+  -- explicit exports to hide some things that break Haddock
+  ( Coapplicative (..)
+  , Comonad (..)
+  , Distributive (..)
+  , consume
+  , Algebra, Coalgebra
+  , GAlgebra, GCoalgebra
+  , ElgotAlgebra, ElgotCoalgebra
+  , NewEither (..), NewTuple (..)
+  , NewEither' (..), NewTuple' (..)
+  , TestA, DualA
+  , TestB, DualB
+  , TestC, DualC
+  , Mu (..), Nu (..)
+  , Fix (..)
+  , cata, ana
+  , exampleDuals) where
 
 import Control.Arrow
 import Data.Char
@@ -43,8 +62,10 @@ testQ = undefined :: Either Bool (Char, b -> Int) -> (Int -> a, Char)
 -- labelDual 'join 'duplicate -- the latter is a class method, but the former is a
                            -- function
 
+-- | This should get mapped to the newly created class … right?
 makeDualClass ''Applicative "Coapplicative" [('pure, "extract")]
 
+-- | This should get mapped to the newly created class … right?
 makeDualClass ''Monad "Comonad" [('(>>=) , "=>>")]
 
 
@@ -55,6 +76,9 @@ makeDualClass ''Monad "Comonad" [('(>>=) , "=>>")]
 --        be too weak.
 labelSemiDual ''Foldable ''Functor
 
+
+-- | Because `Foldable` is semi-dual to `Functor` (which isn’t safe), we end
+--   up with a duplicate `Functor` constraint here.
 makeDualClass ''Traversable "Distributive"
   [ ('traverse, "cotraverse")
   , ('sequenceA, "distribute")]
@@ -70,8 +94,11 @@ consume f = fmap f . sequenceA
 -- makeDualValue '(>=>) '(=>=)
 -- makeDualValue '(<=<) '(=<=)
 
+-- | Sometimes the doc is mapped to the original.
 makeDualDec [d|type Algebra f a = f a -> a|]            "Coalgebra"
+-- | Other times, to the dual.
 makeDualDec [d|type GAlgebra w f a = f (w a) -> a|]     "GCoalgebra"
+-- | I’m not sure why one or the other happens.
 makeDualDec [d|type ElgotAlgebra w f a = w (f a) -> a|] "ElgotCoalgebra"
 
 makeDualDec [d|newtype NewEither a b = NewEither (Either a b)|] "NewTuple"
@@ -79,8 +106,11 @@ makeDualDec [d|data NewEither' a b = NewEither' (Either a b)|] "NewTuple'"
 -- FIXME: doesn’t terminate
 -- makeDualDec [d|data Mu f = Mu (forall a. Algebra f a -> a)|] "NotNu"
 
+-- | I wonder if
 makeDualDec [d|data family TestA a|] "DualA"
+-- | This always
 makeDualDec [d|type family TestB a|] "DualB"
+-- | Happens.
 makeDualDec
   [d| type family TestC a where
         TestC (Either b c) = b
@@ -103,9 +133,12 @@ data Fix f = Fix { unfix :: f (Fix f) }
 labelSelfDual ''Fix -- not really
 labelDual 'Fix 'unfix
 
+-- | Interestingly, the documentation for a dualized function definition is
+--   added to the dual, not the explicitly-defined name.
 makeDualDec
   [d| cata :: Functor f => (f a -> a) -> Fix f -> a
       cata f = f . fmap (cata f) . unfix |]
   "ana"
 
+-- | Duals for this module.
 exportDuals "exampleDuals"

@@ -5,10 +5,11 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- | Operations to connect dual constructions.
 module Dual.TH
   ( importDuals
   , exportDuals
-  , initialDuals -- shouldn’t export this
+  , emptyDuals -- shouldn’t export this
 
   , dualType
   , dualExp
@@ -53,23 +54,10 @@ instance Monoid DualMappings where
     --     right-biased?
     DualMappings (t' `Map.union` t) (v' `Map.union` v)
 
--- TODO: Extract as many as possible into `Dual.Prelude`.
-initialDuals :: Q DualMappings
-initialDuals = pure $ DualMappings
-  (Map.fromList [
-                -- , (''Mu,          ConT ''Nu)
-                -- , (''Nu,          ConT ''Mu)
-                  (''Monad,       ConT ''Comonad)
-                , (''Comonad,     ConT ''Monad)
-                -- , (''Recursive,   ConT ''Corecursive)
-                -- , (''Corecursive, ConT ''Recursive)
-                -- , (''Embeddable,  ConT ''Projectable)
-                -- , (''Projectable, ConT ''Embeddable)
-                ])
-  (Map.fromList [--  ('(.),   VarE '(>>>))
-                 -- , ('cata,  'ana)
-                 -- , ('gcata, 'gana)
-                ])
+-- | The empty set of duals, should only be used to initalize the duals for
+--   `Prelude`.
+emptyDuals :: Q DualMappings
+emptyDuals = pure $ DualMappings Map.empty Map.empty
 
 reifyDuals :: DualMappings -> Q Exp
 reifyDuals duals =
@@ -271,7 +259,8 @@ handleMissingDual =
   exceptT (\t -> fail $ "no dual for " ++ either (\t -> "type " ++ show t) (\e -> "expression " ++ show e) t)
           pure
 
-
+-- | Convert an expression to its dual (i.e., an implementation for the dual
+--   of the input expression’s type)
 dualExp :: Exp -> Q Exp
 dualExp exp = do
   duals <- retrieveDuals
@@ -317,6 +306,7 @@ labelDualExpT name coname exp' coexp' = do
   duals <- retrieveDuals
   pure [] <* (putQ $ duals & dualValues %~ (Map.insert coname exp' . Map.insert name coexp'))
 
+-- | Indicate that two names are duals of each other.
 labelDual :: Name -> Name -> Q [Dec]
 labelDual name coname = do
   a <- fromName name

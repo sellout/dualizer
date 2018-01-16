@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- | Dual mappings for types in 'base'.
 module Dual.Base where
 
 import Prelude hiding (id)
@@ -22,4 +23,5 @@ labelSemiDual '(Prelude..) '(>>>)
 labelSemiDual '(Control.Category..) '(>>>)
 labelDual '(<<<) '(>>>)
 
+-- | Duals for 'base'.
 exportDuals "baseDuals"
