@@ -1,7 +1,8 @@
 name:                dualizer
 version:             0.1.0.0
 synopsis:            Automatically generate dual constructions.
--- description:
+description:         A library for defining duals automatically, as well as
+                     labeling duals in existing packages.
 homepage:            https://github.com/sellout/dualizer#readme
 author:              Greg Pfeil
 maintainer:          greg@technomadic.org
