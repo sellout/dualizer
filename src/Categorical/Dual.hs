@@ -6,7 +6,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- | Operations to connect dual constructions.
-module Dual.TH
+module Categorical.Dual
   ( importDuals
   , exportDuals
   , emptyDuals -- shouldn’t export this
@@ -437,39 +437,9 @@ dualizeDec db coname d =
         _ -> lift $ errorNoNewName
 
 -- | Creates both the original declaration and its dual. Should only work for
---   declarations that introduce exactly one un-scoped name.
+--   declarations that introduce exactly one top-level name.
 makeDualDec :: Q [Dec] -> String -> Q [Dec]
 makeDualDec decs co = do
   let coname = mkName co
   db <- retrieveDuals
   fmap join . traverse (dualizeDec db coname) =<< decs
-
--- | Handles dualizing declarations that don’t introduce a new name. This
---   applies the equivalent declaration to the (already created) dual.
--- withDual :: Q Dec -> Q [Dec]
--- withDual dec =
---   dec >>= (\case
---               FunD n _ -> errorNewName n
---               ValD (VarP n) _ _ -> errorNewName n
---               ValD _ _ _ -> fail "declaration introduces new names"
---               DataD _ n _ _ _ _ -> errorNewName n
---               NewtypeD _ n _ _ _ _ -> errorNewName n
---               TySynD n _ _ -> errorNewName n
---               ClassD _ n _ _ _ -> errorNewName n
---               InstanceD o c t ds -> undefined
---               SigD n _ -> errorNewName n
---               ForeignD f -> undefined
---               InfixD f n -> InfixD f <$> dualName n
---               PragmaD p -> undefined
---               DataFamilyD n _ _ -> errorNewName n
---               DataInstD c n ts k cs dcs -> undefined
---               NewtypeInstD c n ts k c' dcs -> undefined
---               TySynInstD n tse -> undefined
---               OpenTypeFamilyD (TypeFamilyHead n _ _ _) -> errorNewName n
---               ClosedTypeFamilyD (TypeFamilyHead n _ _ _) _ -> errorNewName n
---               RoleAnnotD _ _ -> undefined -- ???
---               StandaloneDerivD ds c -> undefined
---               DefaultSigD n t -> undefined -- ???
---               -- PatSynD n _ _ _ -> errorNewName n
---               -- PatSynSigD n _ _ _ -> errorNewName n
---           )

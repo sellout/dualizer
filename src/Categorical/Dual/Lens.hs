@@ -1,11 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | Dual mappings for types in 'lens'.
-module Dual.Lens where
+module Categorical.Dual.Lens where
 
+import Categorical.Dual
+import Categorical.Dual.Prelude
 import Control.Lens
-import Dual.Prelude
-import Dual.TH
 
 importDuals preludeDuals
 

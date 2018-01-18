@@ -23,7 +23,7 @@ makeDualClass ''Applicative "Coapplicative" [('pure, "extract")]
 makeDualClass ''Monad "Comonad" [('(>>=) , "=>>")]
 ```
 
-See `Dual.Example` for a bit more.
+See [`Categorical.Dual.Example`](src/Categorical/Dual/Example.hs) for a bit more.
 
 ## The Template Haskell You Need to Know
 

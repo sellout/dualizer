@@ -1,9 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | Dual mappings for types in the 'Prelude'.
-module Dual.Prelude where
+module Categorical.Dual.Prelude where
 
-import Dual.TH
+import Categorical.Dual
 
 importDuals emptyDuals
 

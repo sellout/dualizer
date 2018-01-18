@@ -1,13 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | Dual mappings for types in 'base'.
-module Dual.Base where
+module Categorical.Dual.Base where
 
 import Prelude hiding (id)
+import Categorical.Dual
+import Categorical.Dual.Prelude
 import Control.Arrow
 import Control.Category
-import Dual.Prelude
-import Dual.TH
 
 importDuals preludeDuals
 

@@ -6,7 +6,7 @@
 
 -- | This should be tests, but if you look for the source of this module,
 --   you’ll see how to use the package.
-module Dual.Example
+module Categorical.Dual.Example
   -- explicit exports to hide some things that break Haddock
   ( Coapplicative (..)
   , Comonad (..)
@@ -20,17 +20,18 @@ module Dual.Example
   , TestA, DualA
   , TestB, DualB
   , TestC, DualC
+  , (>^>), (<^<)
   , Mu (..), Nu (..)
   , Fix (..)
   , cata, ana
   , exampleDuals) where
 
+import Categorical.Dual
+import Categorical.Dual.Base
+import Categorical.Dual.Lens
 import Control.Arrow
 import Data.Char
 import Data.Void
-import Dual.Base
-import Dual.Lens
-import Dual.TH
 
 importDuals baseDuals
 importDuals lensDuals
@@ -117,10 +118,11 @@ makeDualDec
         TestC Int = Char |]
   "DualC"
 
--- makeDualDec
---   [d| (>^>) :: (a -> b) -> (b -> c) -> a -> c
---       (>^>) = (>>>) |]
---   "<^<"
+-- | These docs are going to end up on `<^<`, which is not what I’d expect.
+makeDualDec
+  [d| (>^>) :: (a -> b) -> (b -> c) -> a -> c
+      (>^>) = (>>>) |]
+  "<^<"
 -- withDual [d| { infix 3 >^> } |]
 
 labelSelfDual '($)
@@ -134,7 +136,8 @@ labelSelfDual ''Fix -- not really
 labelDual 'Fix 'unfix
 
 -- | Interestingly, the documentation for a dualized function definition is
---   added to the dual, not the explicitly-defined name.
+--   added to the dual, not the explicitly-defined name. I don’t know why this
+--   behaves differently than the other cases.
 makeDualDec
   [d| cata :: Functor f => (f a -> a) -> Fix f -> a
       cata f = f . fmap (cata f) . unfix |]
