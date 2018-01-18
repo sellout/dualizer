@@ -1,0 +1,793 @@
+#+title: Duality and How to Delete Half (minus ε) of Your Code
+#+author: Greg Pfeil
+#+email: greg@technomadic.org
+#+date: Wednesday, 2018 January 10
+#+description: There’s a prefix that shows up a lot in Haskell: “co-”. There are “comonads” and “coalgebras” and “covariant functors” … wait a second, that last one means something different than the others. But what, and how? I’ll explain the concept of duality (at least in category theory, you’re on your own for metaphysics) and distinguish it from often confused concepts like variance and isomorphisms. I will also introduce a tool, [[https://github.com/sellout/dualizer][Dualizer]], for programmatically generating dual constructions, which can hopefully both reduce the amount of code you write and give you a new way to explore category theory.
+#+options: d:(not LOGBOOK SPEAKERNOTES)
+#+drawers: SPEAKERNOTES
+#+epresent_frame_level: 3
+#+epresent_mode_line: (" @sellout" "             Duality and How to Delete Half (minus ε) of Your Code             " (:eval (int-to-string epresent-page-number)))
+
+
+
+
+
+
+
+
+
+ ↓ Twitter                                                                                                             slide ↓
+
+* Haskell is /not/ Category Theory
+
+  :speakernotes:
+Before we get too far, I want to make it clear – Haskell is /not/ category theory. We steal a lot of concepts and they generally apply to things pretty well, but a lot of the relationships are hand-wavy, and as soon as you start trying to implement CT concepts, you run into a few walls.
+
+For example,
+  :END:
+
+#+begin_src haskell
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+#+end_src
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+** generalizing ~Functor~
+
+:speakernotes:
+isn’t really an arbitrary “functor”, but rather an endofunctor in the “category” of Hask (where “Hask” means “Haskell types”, and is Hask even a category? It’s hotly debated.)
+
+We /can/ move things closer to CT, perhaps with
+:END:
+
+#+begin_src haskell
+type family Cat k :: k -> k -> *
+type instance Cat Type = (->)
+
+class (Category (Cat j), Category (Cat k)) =>
+      Functor (f :: j -> k) where
+  fmap :: Cat j a b -> Cat k (f a) (f b)
+
+newtype Natural (cat :: k -> k -> *)
+                (f :: j -> k)
+                (g :: j -> k) = 
+  Natural { runNatural :: forall x. cat (f x) (g x) }
+
+type instance Cat (j -> k) = Natural (Cat k)
+#+end_src
+
+
+
+
+
+
+
+
+*** Wait … what’s a category?
+
+- objects
+- arrows
+
+“Hask”
+- ~Int -> Char~
+
+“A monad is just a monoid in /the category of endofunctors/.”
+#+begin_src haskell
+mempty  :: Id ~> F      -- pure
+mappend :: (F ∘ F) ~> F -- join
+#+end_src
+
+So is an ~Applicative~!
+#+begin_src haskell
+mempty  :: Id ~> F     -- pure
+mappend :: (F, F) ~> F -- ap
+#+end_src
+
+** generalizing ~Functor~
+
+:speakernotes:
+isn’t really an arbitrary “functor”, but rather an endofunctor in the “category” of Hask (where “Hask” means “Haskell types”, and is Hask even a category? It’s hotly debated.)
+
+We /can/ move things closer to CT, perhaps with
+:END:
+
+#+begin_src haskell
+type family Cat k :: k -> k -> *
+type instance Cat Type = (->)
+
+class (Category (Cat j), Category (Cat k)) =>
+      Functor (f :: j -> k) where
+  fmap :: Cat j a b -> Cat k (f a) (f b)
+
+newtype Natural (cat :: k -> k -> *)
+                (f :: j -> k)
+                (g :: j -> k) = 
+  Natural { runNatural :: forall x. cat (f x) (g x) }
+
+type instance Cat (j -> k) = Natural (Cat k)
+#+end_src
+:speakernotes:
+so now we have a “true” functor between categories ~j~ and ~k~ where ~Cat~ represents the type of the arrows in the category. To get back the traditional ~Functor~, both categories are ~*~, which means the arrowss are ~->~. Oh, don’t worry, this is going to come back into play with duality …
+
+Duality definitely falls into that trap – and I’m not going to distinguish things too much in this talk. I’m going to be talking about CT and showing Haskell, and only sometimes going to point out where they don’t align so well.
+
+But fast & loose reasoning is morally correct … right?
+:END:
+** specializing ~Functor~
+
+#+begin_src haskell
+class (Category (Cat j), Category (Cat k)) =>
+      Functor (f :: j -> k) where
+  fmap :: Cat j a b -> Cat k (f a) (f b)
+#+end_src
+
+#+begin_src haskell
+class (Category (->), Category (->)) =>
+      Functor (f :: Type -> Type) where
+  fmap :: (->) a b -> (->) (f a) (f b)
+#+end_src
+
+
+* So, what’s duality?
+
+  :speakernotes:
+A little CT to start with: for any category /C/, there is an opposite (or dual) category C^op with all the arrows reversed (but the same objects). It follows from reversing the arrows again, that the dual category of C^op is C.
+
+So far, so easy, right? That’s fundamentally all there is to it, but there are some complications
+  :END:      
+
+- C
+- C ↦ C^op
+- (C^op)^op = C
+
+
+
+
+
+
+
+
+
+
+
+
+
+** a tuple
+
+:speakernotes: 
+#+begin_src dot -s 300 :file product.png
+digraph {
+  "(a, b)" -> a [label="fst"]
+  "(a, b)" -> b [label="snd"]
+}
+#+end_src
+  :END:
+      
+[[file:product.png]]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*** What’s the dual?
+
+  :speakernotes: 
+#+begin_src dot :file unknown.png
+digraph {
+  rankdir=BT
+  a -> "?"
+  b -> "?"
+}
+#+end_src
+  :END:
+      
+[[file:unknown.png]]
+
+*** Either!
+
+  :speakernotes: 
+#+begin_src dot :file coproduct.png
+digraph {
+  rankdir=BT
+  a -> "Either a b" [label="Left"]
+  b -> "Either a b" [label="Right"]
+}
+#+end_src
+  :END:
+      
+[[file:coproduct.png]]
+
+** What does it mean to “reverse the arrows”?
+
+   :speakernotes: 
+This is when we start to get into practical complications. Let’s look at a simple case ~a -> b~. An arrow is /sort of/ another name for function, so the dual of ~a -> b~ is ~b -> a~. Ok, great. Now let’s look at something a bit more complicated:
+   :END:      
+
+#+begin_src haskell
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+#+end_src
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*** Reversed!
+
+    :speakernotes: 
+What? Didn’t we just look at this? Yeah, ok, but it was for a different reason … sort of. So let’s reverse the arrows of ~Functor~.
+    :END:
+
+#+begin_src haskell
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+
+
+cofmap :: (a <- b) <- f a <- f b
+
+cofmap :: f b -> f a -> (b -> a)
+#+end_src
+
+:speakernotes: 
+So, something isn’t right here – there’s no way you can have a function that takes an ~f b~ and and ~f a~ and returns a function of ~b -> a~. It turns out the arrows are /different/. But let’s go back to our “categorical” ~Functor~ from earlier:
+:END:
+
+
+*** Categorical
+      
+#+begin_src haskell
+class (Category (Cat j), Category (Cat k)) =>
+      Functor (f :: j -> k) where
+  fmap :: Cat j a b -> Cat k (f a) (f b)
+#+end_src
+
+    :speakernotes: 
+With this definition we can now talk about ~Cat j a b~ “a arrow in category j from a to b”. Well, clearly in this case “reversing the arrows” is obvious:
+    :END:
+      
+#+begin_src haskell
+  cofmap :: Cat j b a -> Cat k (f b) (f a)
+#+end_src
+
+#+begin_src haskell
+  -- Cat Type = (->)
+  cofmap :: (b -> a) -> f b -> f a
+#+end_src
+
+    :speakernotes: 
+And this leads to another revelation – Functors are self-dual. You can see that just swapping the variables ~a~ and ~b~ gives us a ~cofmap~ that is equvalent to the original ~fmap~.
+    :END:
+
+*** Takeaways      
+
+- The objects of a category and its dual are the same
+- The arrows of a category ond its dual are the same, but reversed
+- ∴ ~Cat j~ is sort-of its own dual, and ~Cat j a b~ is dual to ~Cat j b a~
+- ∴ ~Functor~ is its own dual and ~fmap~ is its own dual
+
+#+begin_src haskell
+type Op c a b = Cat c b a
+#+end_src
+
+:speakernotes: 
+which lets us refer to the opposite category, and now we can say that the dual of ~Cat~ is ~Op~ … which is great as long as we’re dealing with ~Cat~, but we rarely get to do that in production Haskell code, right? I mean, it kills me, but it’s true.
+This is something we end up doing a lot – generalizing some Haskell thing to it’s CT equivalent, figuring out the duals, and then applying them back to the Haskell thing.
+:END:
+      
+
+
+** Other notions of duality
+
+   :speakernotes:
+There are many different notions of duality throughout mathematics, and they don’t necessarily line up.
+
+E.g., there is a notion of “dual vector spaces”, but then you talk about “double duals“, which are the dual of the dual. In catgegory theory, that’d just be the original category.
+   :END:
+
+- set complements
+- dual vector space   
+
+** Notions similar to duality
+
+*** Variance
+
+    :speakernotes:
+One expectation that people often have is that the dual of `Functor` (aka, a “covariant” functor) must be a contravariant functor.
+    :END:
+
+
+#+begin_src haskell
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+
+class Contravariant f where
+  contramap :: (b -> a) -> f a -> f b
+#+end_src
+
+:speakernotes:
+In other languages you may see variance in different contexts – in Scala, you see it on type parameters, like ~Foo[+A]~ or ~Foo[-A]~ this is the same concept.
+
+You can see here that the mapping function has been reversed. But to be a dual, what else needs to happen? That’s right – the resulting function also needs to be in its opposite category … which would give us back a regular /covariant/ ~Functor~ again.
+
+Now … what happens if we do take the dual of ~Contravariant~?
+:END:
+
+
+#+begin_src haskell
+class Cocontravariant f where
+  cocontramap :: (a -> b) -> f b -> f a
+#+end_src
+
+    :speakernotes: 
+We’re right back where we started – so ~Contravariant~ is also self-dual.
+
+How about /invariant/ functors?
+    :END:
+      
+
+#+begin_src haskell
+class Invariant f where
+  imap :: (a -> b) -> (b -> a) -> f a -> f b
+
+class Coinvariant f where
+  coimap :: (b -> a) -> (a -> b) -> f b -> f a
+#+end_src
+
+    :speakernotes: 
+Ok, perhaps you’re unsurprised at this point. If so, great! That means you’re getting a bit of a sense of this.
+
+Looking at this, we can see that variance is independent of duality.
+    :END:
+      
+.
+
+*** Isomorphisms
+
+#+begin_src haskell
+spotCheckIsomorphism
+  :: (a -> b) -> (b -> a) -> a -> b -> Bool
+spotCheckIsomorphism f g a b =
+  g (f a) == a && f (g b) == b
+#+end_src
+
+    :speakernotes: 
+~Dual~ itself is an isomorphism, and many duals do admit isomorphisms in special cases, but duals aren’t necessarily isomorphic. E.g, ~snd~ and ~Right~
+    :END:
+      
+
+#+begin_src haskell
+snd :: (a, b) -> b
+right :: b -> Either a b
+
+tToE :: (a, b) -> Either a b
+tToE = right . snd
+
+eToT :: _
+eToT = snd . right -- 🚫
+#+end_src
+
+    :speakernotes: 
+You can compose them in one direction, but you can’t even compose them the other way, let alone expect to get the original value back.
+    :END:
+      
+.
+*** Adjunctions
+
+    :speakernotes: 
+Adjunctions are a somewhat advanced topic, but there are a few things in them that sometimes get confused with duals. In fact, I made the mistake myself just a week ago.
+    :END:
+      
+
+#+begin_src meh
+L ⊣ R
+#+end_src
+
+    :speakernotes: 
+~f~ is /left adjoint/ to ~g~ and ~g~ is right adjoint to ~f~. These may be, but aren’t necessarily, duals. Beyond that, any adjunction induces both a monad (~g · f~) and a comonad (~f · g~). I don’t think there’s a name for the relationship between the monad and comonad, but they are often clearly related (e.g., ~State~ and ~Store~).
+
+In particular, people often think of ~Writer~ and ~Reader~ as dual, but they really form an adjunction (well, sort of). The dual of the structure underlying ~Writer~ (a tuple) is ~Either~.
+
+#+begin_src dot :file right.png
+digraph {
+  subgraph "clusterC" {
+    label="C"
+    c
+  }
+  subgraph "clusterD" {
+    label="D"
+    d
+    "d'"
+  }
+
+  c -> "d'" [label="R"]
+  d -> "d'" [label="η"]
+  d -> c [label="L"]
+}
+#+end_src
+    :END:
+      
+[[file:right.png]]
+
+:speakernotes: 
+#+begin_src dot :file left.png
+digraph {
+  subgraph "clusterC" {
+    label="C"
+    c
+    "c'"
+  }
+  subgraph "clusterD" {
+    label="D"
+    d
+  }
+  c -> d [label="R"]
+  d -> "c'" [label="L"]
+  "c'" -> c [label="ε"]
+}
+#+end_src
+:END:
+      
+[[file:left.png]]
+
+
+* Is it useful to know the dual of something?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  :speakernotes:
+That is a /really/ good question. If we know the dual of something, what can we do with it? Not much, really.
+
+However, it is useful to be able to /construct/ the dual of something. There are non-zero instances where I have “simply” reversed the arrows for something and discovered some other structure that was also useful to me.
+
+This actually happened last weekend. On Friday, [[https://www.reddit.com/r/haskell/comments/7oav51/i_made_a_monad_that_i_havent_seen_before_and_i/][someone discovered a new monad]]. Without getting into the details, if you constrain the ~Store~ comonad with a monoid, you can get a monad instance out of it. That’s already pretty cool. But then Ed Kmett said “if you can get a monad from ~Store~, then you can probably get a comonad (the dual of a monad) from ~State~ (the dual of ~Store~).” Then [[http://comonad.com/reader/2018/the-state-comonad/][he did it]]. And he noticed that this was already something he was using concretely: ~extract = flip evalState mempty~ is something that comes up a lot when dealing with state already, but Ed also had a more constrained comonad defined for streaming.
+
+As an aside, Kmett has a ~newtype Co w a~ that converts any comonad into its dual monad, but the reverse isn’t possible within Haskell, so he had to manually construct ~Comonad State~ and from there can /hopefully/ verify that ~Co (State s)~ is equivalent to ~Store s~.
+
+And, it turns out that even though /Haskell isn’t category theory/, we can still encode the rules of duality well enough to have Haskell do the work of finding a dual for us (at least in a lot of cases). Which means we can now just /ask/ for the dual of something, and Haskell will tell us. And then we have a new structure … which /may/ be useful.
+
+Not to mention that if you’re working in a domain that deals with duals a lot (as I do, with recursion schemes), you can avoid writing a lot of code in this way.
+  :END:
+
+*** So, Store is a comonad
+
+    :speakernotes: 
+If you’re not familiar with ~Store~, it’s basically a place in a larger structure, you can see the current value, and you can provide a new value, getting the updated larger structure as a result. The most well-known instance of this is probably lens, where ~type Lens' a s = a -> Store s a~.
+    :END:
+      
+
+#+begin_src haskell
+newtype Store s a = Store (s, s -> a)
+
+
+instance Comonad (Store s) where
+  extract (Store (s, f)) = f s
+#+end_src
+
+*** Someone figured out a monad for Store
+
+#+begin_src haskell
+newtype Store s a = Store (s, s -> a)
+
+
+instance Comonad (Store s) where
+  extract (Store (s, f)) = f s
+
+
+
+
+instance Monoid s => Monad (Store s) where
+  pure a = Store (mempty, const a)
+#+end_src
+
+*** State is the dual of Store
+
+#+begin_src haskell
+newtype Store s a = Store (s, s -> a)
+newtype State s a = State (s -> (s, a))
+
+instance Comonad (Store s) where
+  extract (Store (s, f)) = f s
+
+instance Monad (State s) where
+  pure a = (\s -> (s, a))
+
+instance Monoid s => Monad (Store s) where
+  pure a = Store (mempty, const a)
+#+end_src
+
+*** And the duals!
+
+#+begin_src haskell
+newtype Store s a = Store (s, s -> a)
+newtype State s a = State (s -> (s, a))
+
+instance Comonad (Store s) where
+  extract (Store (s, f)) = f s
+
+instance Monad (State s) where
+  pure a = (\s -> (s, a))
+
+instance Monoid s => Monad (Store s) where
+  pure a = Store (mempty, const a)
+
+instance Monoid s => Comonad (State s) where
+  extract (State f) = fst $ f mempty
+#+end_src
+
+* → Dualizer ←
+
+:speakernotes: 
+Dualizer is a tool I wrote to help myself
+1. understand duality a bit better (and it has certainly uncovered some unknown unknowns for me) and
+2. have an excuse to finally learn Template Haskell.
+
+As a result of #2, I feel like the ergonomics of the library are really lacking, but we can at least see what it does, and hopefully the ergonomics can be improved down the line.
+:END:      
+      
+1. duality
+2. Template Haskell
+3. recursion schemes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+** Types
+
+   :speakernotes: 
+The most direct thing you can do is ask for the dual of a type:
+   :END:
+      
+
+#+begin_src haskell
+testT :: $(dualType =<< [t|Either Int Char|])
+testT = (3, 'a')
+#+end_src
+
+   :speakernotes: 
+Yes, this compiles. Just as we talked about earlier, the dual of Either is a tuple. And we can do the opposite, too, since C^op^op
+   :END:
+      
+
+#+begin_src haskell
+testE :: $(dualType =<< [t|forall a. (Int, a)|])
+testE = Left 3
+#+end_src
+
+#+begin_src haskell
+testT :: Dual Either Int Char      -- fragile
+testE :: Dual (forall a. (Int, a)) -- 🚫
+#+end_src
+
+
+** Expressions
+
+#+begin_src haskell
+snd :: (a, b) -> b
+snd = $(dualExp =<< [e|Right|])
+#+end_src
+
+#+begin_src haskell
+right :: b -> Either a b
+right = $(dualExp =<< [e|snd|])
+#+end_src
+
+** Ergonomics
+
+   :speakernotes: 
+I’m going to jump right to the fun part here.
+   :END:
+      
+
+#+begin_src haskell
+data Fix f = Fix { project :: f (Fix f) }
+labelSelfDual ''Fix -- Not actually true
+labelDual 'Fix 'project
+
+makeDualDec
+  [|d cata :: (f a -> a) -> Fix f -> a
+      cata f = f . fmap (cata f) . project |]
+  "ana"
+#+end_src
+
+:speakernotes: 
+So, we declare a new data type representing the fixed-point of functors. We don’t need to care about the specific data type so much, other than to note that it is its own dual, and that the constructor for it is dual to its sole accessor. Then we define a function that uses this type, wrapping it in a bit of magic that says “also define the dual of this function, and give it the name ~ana~.” The generated dual looks like:
+:END:
+      
+
+#+begin_src haskell
+ana :: (a -> f a) -> a -> Fix f
+ana f = Fix . fmap (ana f) . f
+#+end_src
+
+:speakernotes: 
+So, let’s walk through this a bit … the first argument is a function (and the dual of a function just inverts the arrows, as we’ve seen). And then we hit the same issue we did with ~Functor~ – rather than this being a function of two arguments, it’s really a function that takes a function and returns a function. So, we flip the arrow of the returned function as well. So, we now have the correct type for ~ana~.
+
+Now, the value … first, the dual of ~f . g~ is ~g . f~, so all the compositions should be flipped, which means we compare ~project~ to ~Fix~, ~fmap~ to ~fmap~, and ~f~ to ~f~. We’ve just declared that ~Fix~ and ~project~ are duals, so that works. Variables are sort of self-dual (their types have been dualized, so it really represents a different expression), so ~f~ works as well. Finally, we have ~fmap~. We know that that is self-dual already, but we have to take the dual of the function we pass to it, and as we’ve just defined here, ~ana~ is (going to be) the dual of ~cata~, so we swap that in there, and great – it all checks out!
+:END:
+   
+** A lot of stuff already works …
+
+#+begin_src haskell
+makeDualDec [d|type Algebra f a = f a -> a|] "Coalgebra"
+
+makeDualDec [d|newtype Either' a b = Either' (Either a b)|]
+            "Tuple'"
+makeDualDec [d|data Either'' a b = Either'' (Either a b)|]
+            "Tuple''"
+
+makeDualDec [d|data family TestA a|] "DualA"
+makeDualDec [d|type family TestB a|] "DualB"
+makeDualDec
+  [d| type family TestC a where
+        TestC (Either b c) = b
+        TestC Int = Char |]
+  "DualC"
+#+end_src
+* More about Adjunctions
+
+  :speakernotes: 
+This is only tangentially about duality, but adjunctions are /really/ cool. First, if there exists an adjunction between two functors,
+  :END:      
+
+#+begin_src haskell
+instance f ⊣ g => Monad (g ∘ f)
+instance f ⊣ g => Comonad (f ∘ g)
+#+end_src
+
+  :speakernotes: 
+And /all/ monads and comonads can be decomposed into an adjoint pair.
+
+Then there are adjoint triples (and quadruples …) which similarly give adjoint pairs of monads and comonads.
+  :END:
+
+** triples, quadruples, …      
+
+#+begin_src haskell
+--     f ⊣ g ⊣ h
+--  (m) gf ⊣ gh (co)
+-- (co) fg ⊣ hg (m) -- this one can be even _more_ general
+instance (f ⊣ g, g ⊣ h) => (g ∘ f) ⊣ (g ∘ h)
+instance (f ⊣ g, h ⊣ i) => (f ∘ h) ⊣ (i ∘ g)
+#+end_src haskell
+
+  :speakernotes: 
+You can see how this works with some specific examples.
+  :END:
+      
+** a concrete example
+
+#+begin_src haskell
+(a, _) ⊣ (a -> _) -- (almost) Writer a ⊣ Reader a
+  a -> (a, _)     -- State a
+  (a, a -> _)     -- Store a
+#+end_src
+
+  :speakernotes: 
+And since the initial adjunction there is a Comonad/Monad pair, it means that they can further be broken down into an adjoint triple. Unfortunately, that level isn’t easily representable in Haskell, because they’re not ~Functor~, but we could probably use the same ~Cat~ trick to get them.
+
+Another simple example.
+  :END:      
+
+#+begin_src haskell
+(_ -> a) ⊣ (_ -> a) -- Contravariant, not Functor
+   (_ -> a) -> a    -- Cont
+   (_ -> a) -> a    -- also Cont
+#+end_src
+
+:speakernotes: 
+#+begin_src haskell
+data Δ :: c -> (c, c)
+
+        Σ ⊣ Δ ⊣ Π
+      Env A ⊣ Reader A (can we generalize these to polykinds, rather than also
+         Store A        having some transformer version?)
+         State A
+Possibility ⊣ Necessity
+
+Writer A ⊣ Traced A (like above, but with a monoid on `A`)
+    (A, A -> _)
+    A -> (A, _)
+
+(_ -> A) ⊣ (_ -> A)
+       Cont
+       Cont
+
+Free F ⊣ Cofree G (where F ⊣ G) … is this right? Seems like there should be a U of some sort in the middle.
+
+F ⊣ U ⊣ C (coyoneda / forgetful / yoneda)
+ Id ⊣ Id
+   Id
+   Id
+
+−×P ⊣ (−)^P
+
+-- These overlap in self-dual cases, like `Id` and `Cont`.
+type (Monad f, Comonad g, f ⊣ g) => Dual f = g
+type (Comonad f, Monad g, f ⊣ g) => Dual g = f
+
+
+π0 ⊣ D ⊣ U ⊣ A
+
+Lan L ⊣ (−)∘L ⊣ (−)∘R ⊣ Ran R (where L ⊣ R)
+
+              F ⊣ G ⊣ H ⊣ I
+       (F ⊣ G) ⊣ (G ⊣ H) ⊣ (H ⊣ I)
+((F ⊣ G) ⊣ (G ⊣ H)) ⊣ ((G ⊣ H) ⊣ (H ⊣ I))
+
+
+((A, _) -> B) ⊣ (A -> _ -> B)
+        (A, A -> _ -> B) -> B
+
+        A -> ((A, _) -> B) -> B
+        pure x = My
+
+(A, _) \/ (_ -> B) ⊣ (A -> _, _ -> B)
+       (A, (A -> _, _ -> B)) \/ ((A -> _, _ -> B) -> B)
+       copure (Left x) = fst x
+       copure (Right x) = ???
+       (A -> ((A, _) \/ _ -> B), ((A, _) \/ (_ -> B)) -> B)
+       pure = x -> (\a -> Left (a, x), ???)
+#+end_src
+:END:      
+
+* Questions?
+
+- https://github.com/sellout/dualizer
+- greg@technomadic.org
+
+- come work at [[https://takt.com/][Takt]] (we don’t use dualizer … yet) 
