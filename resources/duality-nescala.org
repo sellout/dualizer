@@ -1,0 +1,795 @@
+#+title: Duality and How to Delete Half (minus ε) of Your Code
+#+author: Greg Pfeil <greg@technomadic.org>
+#+OPTIONS: d:(not LOGBOOK SPEAKERNOTES)
+#+DRAWERS: SPEAKERNOTES
+#+epresent_frame_level: 3
+#+epresent_mode_line: (" @sellout" "             Duality and How to Delete Half (minus ε) of Your Code             " (:eval (int-to-string epresent-page-number)))
+
+
+
+
+
+
+
+
+
+
+:speakernotes: 
+I’ll apologize in advance, but there’s going to be some Haskell on these slides. Also Scala, but some Haskell, too.
+
+Hopefully the title is motivating – I mean, it’s a lie, but it’s /aspirational/. I’m going to build up a few things, then get to a point where it seems like there might be a lot of code we can delete. Then, I’m going to show you how I managed to actually delete that code … in Haskell. Then there are a couple paths from there
+
+- how do we get to define something similar in Scala?
+- what more general/unified thing are we reaching toward?
+:END:
+
+ ↓ Twitter                                                                                                             slide ↓
+
+* What is a category?
+
+- objects
+- arrows between objects
+
+- arrows compose
+- an identity arrow for each object
+
+- Scala
+  - types – functions
+- Kleisli
+  - types – ~A => M[B]~
+- (endo-)functors (in Scala)
+  - type constructors – ~F[_] ↝ G[_]~
+
+* What is duality?
+
+  :speakernotes:
+A little CT to start with: for any category /C/, there is an opposite (or dual) category C^op with all the arrows reversed (but the same objects). It follows from reversing the arrows again, that the dual category of C^op is C.
+
+So far, so easy, right? That’s fundamentally all there is to it, but there are some complications
+  :END:
+
+- C
+- C ↦ C^op
+- (C^op)^op = C
+
+- C and C^op have the same objects
+- every arrow /A → B/ in C has a corresponding arrow /B → A/ in C^op
+
+
+
+
+
+
+
+
+
+
+** a tuple
+
+:speakernotes: 
+#+begin_src dot :file product.png
+digraph {
+  "(A, B)" -> A [label="fst"]
+  "(A, B)" -> B [label="snd"]
+}
+#+end_src
+
+#+RESULTS:
+[[file:product.png]]
+
+  :END:
+
+#+RESULTS:
+[[file:product.png]]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*** What’s the dual?
+
+  :speakernotes: 
+#+begin_src dot :file unknown.png
+digraph {
+  rankdir=BT
+  A -> "?"
+  B -> "?"
+}
+#+end_src
+
+#+RESULTS:
+[[file:unknown.png]]
+
+  :END:
+      
+#+RESULTS:
+[[file:unknown.png]]
+
+
+
+
+
+
+
+
+
+
+*** Either!
+
+  :speakernotes: 
+#+begin_src dot :file coproduct.png
+digraph {
+  rankdir=BT
+  A -> "Either[A, B]" [label="Left"]
+  B -> "Either[A, B]" [label="Right"]
+}
+#+end_src
+
+#+RESULTS:
+[[file:coproduct.png]]
+
+  :END:      
+
+#+RESULTS:
+    [[file:coproduct.png]]
+
+
+*** /Types/ not /Values/
+
+#+begin_src scala
+(Int, Char) <-> Either[Int, Char]
+  (3, 'a') <-🚫-> Left 3
+#+end_src
+
+** What does it mean to “reverse the arrows”?
+
+#+begin_src scala
+@typeclass trait Functor[F[_]] {
+  def map[A, B](fa: F[A])(f: A ⇒ B): F[B] = lift(f)(fa)
+
+  def lift[A, B](f: A ⇒ B): F[A] ⇒ F[B] = map(_)(f)
+}
+#+end_src
+
+#+begin_src scala
+@typeclass trait CoFunctor[F[_]] {
+  def colift[A, B](f: A ⇐ B): F[A] ⇐ F[B]
+}
+#+end_src
+
+#+begin_src scala
+@typeclass trait Functor[F[_]] {
+  def lift[A, B](f: B ⇒ A): F[B] ⇒ F[A]
+}
+#+end_src
+
+*This is /not/ variance*
+
+
+
+
+:speakernotes:
+Those of you who know me probably know me because of my recursion schemes work. That’s what I talked about here (well, in Philly) two years ago. I’ll spare you that today, but I wanted to open with a quote from the world of recursion schemes that I feel like describes most things that have interested me since.
+:end:
+
+*** Composition dual
+
+#+begin_src scala
+def compose[A, B, C](f: B ⇒ C, g: A ⇒ B): A ⇒ C
+#+end_src
+
+
+#+begin_src scala
+def co_pose[A, B, C](f: B ⇐ C, g: A ⇐ B): A ⇐ C
+#+end_src
+
+
+#+begin_src scala
+def andThen[A, B, C](f: C ⇒ B, g: B ⇒ A): C ⇒ A =
+  compose(g, f)
+#+end_src
+
+
+
+#+begin_src scala
+dual(f ∘ g) === dual(g) ∘ dual(f)
+#+end_src
+
+** other duals
+
+- ~Monad~ ↔ ~Comonad~
+  - ~Reader~ ↔ ~Env~ (~Writer~ without a ~Monoid~)
+  - ~Writer~ ↔ ~Traced~ (~Reader~ /with/ a ~Monoid~)
+  - ~State~ ↔ ~Store~
+  - ~Free~ ↔ ~Cofree~
+- ~Traverse~ ↔ ~Distributive~
+- ~Recursive~ ↔ ~Corecursive~
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*** Monad ↔ Comonad
+
+#+begin_src scala
+@typeclass trait Monad[M[_]] {
+  def pure[A]: A => M[A]
+
+  def flatMap[A, B](f: A => M[B]): M[A] => M[B]
+}
+
+@typeclass trait Comonad[W[_]] {
+  def extract[A]: W[A] => A
+
+  def coflatMap[B, A](f: W[B] => A): W[B] => W[A] // extend
+}
+#+end_src
+
+** duals compose
+
+#+begin_src haskell
+gcata
+  :: (Functor f, Comonad w)
+  => (forall b. f (w b) -> w (f b))
+  -> (f (w a) -> a)
+  -> Fix f -> a
+gcata k φ = extract . cata (fmap φ . k . fmap duplicate)
+
+gana
+  :: (Functor f, Monad m)
+  => (forall b. m (f b) -> f (m b))
+  -> (a -> f (m a))
+  -> a -> Fix f
+gana k ψ = ana (fmap join . k . fmap ψ) . pure
+#+end_src
+
+** even in Scala
+
+#+begin_src scala
+def gcata[F[_]: Functor, W[_]: Comonad, A]
+  (t: Fix[F])
+  (k: (F ∘ W) ~> (W ∘ F), φ: F[W[A]] => A)
+    : A =
+  t.cata(fa => k(fa.map(_.cojoin)).map(φ)).extract
+
+def gana[F[_]: Functor, M[_]: Monad, A]
+  (a: A)
+  (k: (M ∘ F) ~> (F ∘ M), ψ: A => F[M[A]])
+    : Fix[F] =
+  a.pure[M].ana(ma => k(ma.map(ψ)).map(_.join))
+#+end_src
+
+~(F ∘ W)~ is shorthard for ~λ[A => F[W[A]]]~
+   
+* Dualizer
+
+Automatically Derive Duals
+(but not in Scala yet)
+
+- https://github.com/sellout/dualizer
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+** Types
+
+#+begin_src haskell
+testT :: $(dualType =<< [t|Either Int Char|])
+testT = (3, 'a')
+#+end_src
+
+   :speakernotes: 
+Yes, this compiles. Just as we talked about earlier, the dual of Either is a tuple. And we can do the opposite, too, since C^op^op
+   :END:
+      
+
+#+begin_src haskell
+testE :: $(dualType =<< [t|forall a. (Int, a)|])
+testE = Left 3
+#+end_src
+
+** Expressions
+
+#+begin_src haskell
+snd :: (a, b) -> b
+snd = $(dualExp =<< [e|Right|])
+#+end_src
+
+#+begin_src haskell
+right :: b -> Either a b
+right = $(dualExp =<< [e|snd|])
+#+end_src
+
+** Ergonomics
+
+   :speakernotes: 
+I’m going to jump right to the fun part here.
+   :END:
+      
+
+#+begin_src haskell
+data Fix f = Fix { project :: f (Fix f) }
+labelSelfDual ''Fix -- Not actually true
+labelDual 'Fix 'project
+
+makeDualDec
+  [d| cata :: (f a -> a) -> Fix f -> a
+      cata f = f . fmap (cata f) . project |]
+  "ana"
+#+end_src
+
+
+:speakernotes: 
+So, we declare a new data type representing the fixed-point of functors. We don’t need to care about the specific data type so much, other than to note that it is its own dual, and that the constructor for it is dual to its sole accessor. Then we define a function that uses this type, wrapping it in a bit of magic that says “also define the dual of this function, and give it the name ~ana~.” The generated dual looks like:
+:END:            
+
+#+begin_src haskell
+ana :: (a -> f a) -> a -> Fix f
+ana f = Fix . fmap (ana f) . f
+#+end_src
+
+
+:speakernotes: 
+So, let’s walk through this a bit … the first argument is a function (and the dual of a function just inverts the arrows, as we’ve seen). And then we hit the same issue we did with ~Functor~ – rather than this being a function of two arguments, it’s really a function that takes a function and returns a function. So, we flip the arrow of the returned function as well. So, we now have the correct type for ~ana~.
+
+Now, the value … first, the dual of ~f . g~ is ~g . f~, so all the compositions should be flipped, which means we compare ~project~ to ~Fix~, ~fmap~ to ~fmap~, and ~f~ to ~f~. We’ve just declared that ~Fix~ and ~project~ are duals, so that works. Variables are sort of self-dual (their types have been dualized, so it really represents a different expression), so ~f~ works as well. Finally, we have ~fmap~. We know that that is self-dual already, but we have to take the dual of the function we pass to it, and as we’ve just defined here, ~ana~ is (going to be) the dual of ~cata~, so we swap that in there, and great – it all checks out!
+:END:
+
+** A lot of other stuff …
+
+#+begin_src haskell
+makeDualDec [d|type Algebra f a = f a -> a|] "Coalgebra"
+
+makeDualDec [d|newtype Either' a b = Either' (Either a b)|]
+            "Tuple'"
+makeDualDec [d|data Either'' a b = Either'' (Either a b)|]
+            "Tuple''"
+
+makeDualDec [d|data family TestA a|] "DualA"
+makeDualDec [d|type family TestB a|] "DualB"
+makeDualDec
+  [d| type family TestC a where
+        TestC (Either b c) = b
+        TestC Int = Char |]
+  "DualC"
+#+end_src
+
+** to help avoid
+
+#+begin_src haskell
+gcata
+  :: (Functor f, Comonad w)
+  => (forall b. f (w b) -> w (f b))
+  -> (f (w a) -> a)
+  -> Fix f -> a
+gcata k φ = extract . cata (fmap φ . k . fmap duplicate)
+
+gana
+  :: (Functor f, Monad m)
+  => (forall b. m (f b) -> f (m b))
+  -> (a -> f (m a))
+  -> a -> Fix f
+gana k ψ = ana (fmap join . k . fmap ψ) . pure
+#+end_src
+
+* curryhoward
+
+Automatically Derive Implementations
+
+- https://github.com/Chymyst/curryhoward
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+** wat?
+
+#+begin_src scala
+def pure[E, A]: A ⇒ (E ⇒ A) = implement
+
+def map[E, A, B]: (E ⇒ A) ⇒ (A ⇒ B) ⇒ (E ⇒ B) = implement
+
+def flatMap[E, A, B]: (E ⇒ A) ⇒ (A ⇒ E ⇒ B) ⇒ (E ⇒ B) =
+  implement
+#+end_src
+
+
+
+
+
+
+
+
+
+
+
+
+** commutative diagram
+
+   :speakernotes: 
+#+begin_src dot :file curry.png
+digraph commutative {
+  Type [shape=none]
+  Cotype [shape=none]
+  Impl [shape=none]
+  Coimpl [shape=none]
+
+  subgraph {
+    rank=same
+    Type -> Cotype [label=dualType]
+  }
+  Type -> Impl [label=implement]
+  Cotype -> Coimpl [label=implement]
+  subgraph {
+    rank=same
+    Impl -> Coimpl [label=dualExp]
+  }
+}
+#+end_src
+
+#+RESULTS
+[[file:curry.png]]
+
+   :END:
+
+#+RESULTS:
+[[file:curry.png]]
+
+* it’s not that easy, though
+
+#+begin_src scala
+@typeclass trait Functor[F[_]] {
+  def map[A, B](fa: F[A])(f: A ⇒ B): F[B]
+}
+#+end_src
+
+  :speakernotes: 
+We lied about ~Functor~ earlier, right? ~lift~ is useful, and but there’s this other function you may have heard of – ~map~. So, what does it mean to reverse the arrows here?
+  :END:
+      
+
+#+begin_src scala
+@typeclass trait Contravariant[F[_]] {
+  def contramap[A, B](fa: F[A])(f: B ⇒ A): F[B]
+}
+#+end_src
+
+
+
+
+
+
+
+
+
+  :speakernotes: 
+But we showed earlier that the dual of a ~Functor~ is still ~Functor~ … so how can it be ~Contravariant~ here?
+
+It can’t. This is wrong. Our “reversing the arrows” was too naive. (BTW, Haskell runs into this, too – with ~>>=~ for example.
+
+And there are other problems –
+  :END:
+
+** Too Many Arrows?
+
+#+begin_src scala
+@typeclass trait Functor[F[_]] {
+  def lift[A, B](f: A ⇒ B): F[A] ⇒ F[B]
+}
+#+end_src
+
+#+begin_src scala
+@typeclass trait Functor[F[_]] {
+  def lift[A, B]: (A ⇒ B) ⇒ F[A] ⇒ F[B]
+}
+#+end_src
+
+#+begin_src scala
+@typeclass trait Nope[F[_]] {
+  def unhUh[A, B]: F[B] ⇒ F[A] ⇒ B ⇒ A
+}
+#+end_src
+
+
+
+  :speakernotes: 
+So … how do we know /which/ arrows to reverse?
+
+Practically? Some guessing.
+
+More generally?
+  :END:
+
+* Back to Categories
+
+#+begin_src scala
+@typeclass trait Category[Arr[_, _]] {
+
+  def compose[A, B, C](f: Arr[B, C], g: Arr[A, B]): Arr[A, C]
+
+  def id[A]: Arr[A, A]
+}
+
+implicit val function1Category = new Category[Function1] {
+  def compose[A, B, C](f: B => C, g: A => B): A => C =
+    x => f(g(x))
+
+  def id[A]: A => A =
+    x => x
+}
+#+end_src
+
+** instances
+
+- ~Function1[?, ?]~
+- ~Kleisli[M[_], ?, ?]~
+- ~Cokleisli[W[_], ?, ?]~
+
+
+- ~Iso[?, ?]~
+- ~Lens[?, ?]~
+- ~Prism[?, ?]~
+
+** a new ~Functor~ rises
+
+#+begin_src scala
+@typeclass trait Functor[F[_]] {
+  type J[_, _]
+  type K[_, _]
+
+  def lift[A, B]: J[A,   B] => K[F[A],   F[B]]
+}
+
+implicit def optionFunctor = new Functor[Option] {
+  type J[A, B] = A => B
+  type K[A, B] = A => B
+
+  def lift[A, B](f: A => B): Option[A] => Option[B] = {
+    Some(a) => Some(f(a))
+    Nothing => Nothing
+  }
+}
+#+end_src
+
+** a new ~Functor~ rises
+
+#+begin_src scala
+@typeclass trait Functor[F[_]] {
+
+
+
+  def lift[A, B]:  (A => B) =>   F[A] => F[B]
+}
+
+implicit def optionFunctor = new Functor[Option] {
+
+
+
+  def lift[A, B](f: A => B): Option[A] => Option[B] = {
+    Some(a) => Some(f(a))
+    Nothing => Nothing
+  }
+}
+#+end_src
+
+** A New ~Category~!
+
+#+begin_src scala
+final case class Op[Arr[_, _], A, B](dual: Arr[B, A])
+
+
+implicit def opCategory[Arr[_, _]]
+  (implicit Arr: Category[Arr]) =
+
+  new Category[Op[Arr, ?, ?]] {
+    def compose[A, B, C](f: Op[Arr, B, C], g: Op[Arr, A, B])
+        : Op[Arr, A, C] =
+      Arr.compose(g.dual, f.dual)
+
+    def id[A]: Op[Arr, A, A] = Op(Arr.id)
+  }
+#+end_src
+
+#+begin_src scala
+dual(f ∘ g) === dual(g) ∘ dual(f)
+#+end_src
+
+** instances
+
+- ~Function1[?, ?]~
+- ~Kleisli[M[_], ?, ?]~
+- ~Cokleisli[W[_], ?, ?]~
+- ~Op[Arr[_, _], ?, ?]~
+
+** Functor now subsumes Contravariant
+
+#+begin_src scala
+@typeclass trait Contravariant[F[_]] {
+  def contramap[A, B](f: B => A): F[A] => F[B]
+}
+#+end_src
+
+#+begin_src scala
+implicit val eqFunctor = new Functor[Eq] {
+  type J[A, B] = Op[Function1, A, B]
+  type K[A, B] = A => B
+
+  //             f: B => A
+  def lift[A, B](f: Op[Function1, A, B]): Eq[A] => Eq[B] =
+    Eq.by(f.run)(_)
+}
+#+end_src
+
+** And we can now distinguish arrows
+
+#+begin_src scala
+@typeclass trait Functor[F[_]] {
+  def lift[A, B]: (A => B) => F[A] => F[B]
+}
+#+end_src
+
+#+begin_src scala
+@typeclass trait Functor[F[_]] {
+  J[_, _]
+  K[_, _]
+
+  def lift[A, B]: J[A, B] => K[F[A], F[B]]
+}
+#+end_src
+
+# ** other instances?
+
+# - ~FunctionK[?[_], ?[_]]~
+
+# #+begin_src scala
+# List ~> Option
+# #+end_src
+
+# #+begin_src scala
+# List[Int] ~> Option[Char] 🚫
+# #+end_src
+
+# ** How?
+
+# - ~FunctionK[?[_], ?[_]]~
+
+# #+begin_src scala
+# @typeclass trait Category[Arr[_, _]] { ... }
+# #+end_src
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# *** Kind Polymorphism
+
+# #+begin_src idris
+# interface Category (arr : k -> k -> Type) where
+#    id  : arr a a
+#    (.) : arr b c -> arr a b -> arr a c
+# #+end_src
+
+#    :speakernotes: 
+# - Mandubian for kind-polymorphism work
+# - Miles at ScalaDays(?)
+#    :END:      
+
+# #+begin_src scala
+# trait Category[Arr[_ <: AnyKind, _ <: AnyKind]] {
+
+#   def compose
+#     [A <: AnyKind, B <: AnyKind, C <: AnyKind]
+#     (f: Arr[B, C], g: Arr[A, B])
+#       : Arr[A, C]
+
+#   def id[A <: AnyKind]: Arr[A, A]
+# }
+# #+end_src
+
+
+
+# :speakernotes: 
+# These are similar, /except/ that the Scala case doesn’t require the ~AnyKind~ variables to have the /same/ kind, whereas the Haskell version uses a /kind variable/ ~k~ to say “whatever kind ~k~ is, both parameters to ~arr~ must be of that kind.”
+# :END:
+
+# *** And a semi-poly-kinded ~Functor~
+
+# #+begin_src scala
+# //                       F[_ <: AnyKind] <: AnyKind // 🚫
+# @typeclass trait Functor[F[_ <: AnyKind]] {
+#   type J[_ <: AnyKind, _ <: AnyKind]
+#   type K[_, _]
+
+#   def lift[A <: AnyKind, B <: AnyKind](f: J[A, B])
+#       : K[F[A], F[B]]
+# }
+# #+end_src
+    
+** Quote!
+
+“Most if not all constructions in category theory are parametric in the underlying category, resulting in a remarkable economy of expression. […] This possibly leads to a new style of programming, which could be loosely dubbed as /category-parametric programming/.”
+#+begin_justifyright
+                                                 ———Ralf Hinze, [[http://www.cs.ox.ac.uk/ralf.hinze/SSGIP10/AdjointFolds.pdf][Adjoint Folds and Unfolds]]
+#+end_justifyright
+
+:speakernotes:
+So, all of these things
+- the ~Category~ type class
+- Template Haskell / macros
+- kind-polymorphism
+are helping us approach a more unified idea – category-parametric programming. We still have a way to go, even in Haskell, Idris, whatever. But it’s really fun to think about.
+:END:
+
+
+** MEME!
+[[file:~/Downloads/expanding-brain-category.jpg]]
+
+* Questions?
+
+         [[file:~/Downloads/FormationLogo_320x132.png]] 
+
+- Formation is hiring! – https://formation.ai/
+  - *Typelevel* Scala – Cats, http4s, Shapeless Circe, and soon … Turtles (I hope)
+  - Haskell
+
+- Greg Pfeil (aka, Sellout)
+  - greg@technomadic.org
+  - https://github.com/sellout

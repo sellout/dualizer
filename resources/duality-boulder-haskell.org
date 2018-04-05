@@ -167,7 +167,7 @@ So far, so easy, right? That’s fundamentally all there is to it, but there are
 ** a tuple
 
 :speakernotes: 
-#+begin_src dot -s 300 :file product.png
+#+begin_src dot :file product-haskell.png
 digraph {
   "(a, b)" -> a [label="fst"]
   "(a, b)" -> b [label="snd"]
@@ -175,7 +175,8 @@ digraph {
 #+end_src
   :END:
       
-[[file:product.png]]
+#+RESULTS:
+[[file:product-haskell.png]]
 
 
 
@@ -195,7 +196,7 @@ digraph {
 *** What’s the dual?
 
   :speakernotes: 
-#+begin_src dot :file unknown.png
+#+begin_src dot :file unknown-haskell.png
 digraph {
   rankdir=BT
   a -> "?"
@@ -203,13 +204,14 @@ digraph {
 }
 #+end_src
   :END:
-      
-[[file:unknown.png]]
+
+#+RESULTS:      
+[[file:unknown-haskell.png]]
 
 *** Either!
 
   :speakernotes: 
-#+begin_src dot :file coproduct.png
+#+begin_src dot :file coproduct-haskell.png
 digraph {
   rankdir=BT
   a -> "Either a b" [label="Left"]
@@ -218,7 +220,8 @@ digraph {
 #+end_src
   :END:
       
-[[file:coproduct.png]]
+#+RESULTS:
+[[file:coproduct-haskell.png]]
 
 ** What does it mean to “reverse the arrows”?
 
@@ -646,7 +649,7 @@ makeDualDec
 
 :speakernotes: 
 So, we declare a new data type representing the fixed-point of functors. We don’t need to care about the specific data type so much, other than to note that it is its own dual, and that the constructor for it is dual to its sole accessor. Then we define a function that uses this type, wrapping it in a bit of magic that says “also define the dual of this function, and give it the name ~ana~.” The generated dual looks like:
-:END:
+:END:      
       
 
 #+begin_src haskell
