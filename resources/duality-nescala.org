@@ -73,10 +73,6 @@ digraph {
   "(A, B)" -> B [label="snd"]
 }
 #+end_src
-
-#+RESULTS:
-[[file:product.png]]
-
   :END:
 
 #+RESULTS:
@@ -111,10 +107,6 @@ digraph {
   B -> "?"
 }
 #+end_src
-
-#+RESULTS:
-[[file:unknown.png]]
-
   :END:
       
 #+RESULTS:
@@ -139,10 +131,6 @@ digraph {
   B -> "Either[A, B]" [label="Right"]
 }
 #+end_src
-
-#+RESULTS:
-[[file:coproduct.png]]
-
   :END:      
 
 #+RESULTS:
@@ -183,9 +171,6 @@ digraph {
 
 
 
-:speakernotes:
-Those of you who know me probably know me because of my recursion schemes work. That’s what I talked about here (well, in Philly) two years ago. I’ll spare you that today, but I wanted to open with a quote from the world of recursion schemes that I feel like describes most things that have interested me since.
-:end:
 
 *** Composition dual
 
@@ -473,10 +458,6 @@ digraph commutative {
   }
 }
 #+end_src
-
-#+RESULTS
-[[file:curry.png]]
-
    :END:
 
 #+RESULTS:
@@ -780,11 +761,11 @@ are helping us approach a more unified idea – category-parametric programming.
 
 
 ** MEME!
-[[file:~/Downloads/expanding-brain-category.jpg]]
+[[file:expanding-brain-category.jpg]]
 
 * Questions?
 
-         [[file:~/Downloads/FormationLogo_320x132.png]] 
+         [[file:FormationLogo_320x132.png]] 
 
 - Formation is hiring! – https://formation.ai/
   - *Typelevel* Scala – Cats, http4s, Shapeless Circe, and soon … Turtles (I hope)
