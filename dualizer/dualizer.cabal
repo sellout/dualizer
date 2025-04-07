@@ -108,6 +108,8 @@ common defaults
       -Weverything
       -- This one just reports unfixable things, AFAICT.
       -Wno-all-missed-specialisations
+      -- remove if the oldest supported version is GHC 8.2.1+
+      -Wno-missing-deriving-strategies
       -- Type inference good.
       -Wno-missing-local-signatures
       -- Warns even when `Unsafe` is explicit, not inferred. See

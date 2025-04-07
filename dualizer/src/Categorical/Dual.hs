@@ -8,7 +8,6 @@
 {-# LANGUAGE Unsafe #-}
 -- FIXME: remove these
 {-# OPTIONS_GHC -Wwarn=incomplete-patterns
-    -Wwarn=missing-deriving-strategies
     -Wwarn=name-shadowing
     -Wwarn=unused-do-bind
     -Wwarn=unused-matches #-}
