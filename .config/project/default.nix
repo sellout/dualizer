@@ -30,7 +30,11 @@
   editorconfig.enable = true;
 
   programs = {
-    treefmt.enable = true;
+    treefmt = {
+      enable = true;
+      ## FIXME: Remove this
+      programs.hlint.enable = false;
+    };
     vale.enable = true;
   };
 

@@ -1,4 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
+-- FIXME: remove these
+{-# LANGUAGE ImplicitPrelude #-}
+{-# OPTIONS_GHC -Wwarn=implicit-prelude
+    -Wwarn=missing-export-lists
+    -Wwarn=missing-exported-signatures
+    -Wwarn=missing-import-lists
+    -Wwarn=missing-safe-haskell-mode
+    -Wwarn=missing-signatures #-}
 
 -- | Dual mappings for types in the 'Prelude'.
 module Categorical.Dual.Prelude where
@@ -73,6 +81,7 @@ labelSelfDual '(<$>)
 
 labelSelfDual 'id
 labelSelfDual 'const
+
 -- labelSelfDual 'undefined
 
 labelSelfDual 'map

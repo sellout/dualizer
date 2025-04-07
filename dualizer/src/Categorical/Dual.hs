@@ -1,9 +1,25 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+-- FIXME: remove these
+{-# LANGUAGE ImplicitPrelude #-}
+{-# OPTIONS_GHC
+    -Wwarn=implicit-prelude
+    -Wwarn=incomplete-patterns
+    -Wwarn=missing-deriving-strategies
+    -Wwarn=missing-import-lists
+    -Wwarn=missing-safe-haskell-mode
+    -Wwarn=missing-signatures
+    -Wwarn=name-shadowing
+    -Wwarn=unused-do-bind
+    -Wwarn=unused-imports
+    -Wwarn=unused-matches
+    -Wwarn=unused-top-binds
+#-}
 
 -- | Operations to connect dual constructions.
 module Categorical.Dual
@@ -47,12 +63,14 @@ data DualMappings = DualMappings {
 
 makeLenses ''DualMappings
 
-instance Monoid DualMappings where
-  mempty = DualMappings Map.empty Map.empty
-  mappend (DualMappings t v) (DualMappings t' v') =
+instance Semigroup DualMappings where
+  DualMappings t v <> DualMappings t' v' =
     -- NB: I reversed the order here, because I _think_ this is supposed to be
     --     right-biased?
     DualMappings (t' `Map.union` t) (v' `Map.union` v)
+
+instance Monoid DualMappings where
+  mempty = DualMappings Map.empty Map.empty
 
 -- | The empty set of duals, should only be used to initalize the duals for
 --   `Prelude`.
@@ -221,8 +239,13 @@ dualExp' db = \case
   ParensE e -> ParensE <$> dualExp' db e
   LamE p e -> LamE p <$> dualExp' db e
   LamCaseE matches -> LamCaseE <$> traverse (dualMatch' db) matches
+#if MIN_VERSION_template_haskell(2, 16, 0)
+  TupE es -> TupE <$> traverse (traverse $ dualExp' db) es -- FIXME: Doesn’t seem right.
+  UnboxedTupE es -> UnboxedTupE <$> traverse (traverse $ dualExp' db) es
+#else
   TupE es -> TupE <$> traverse (dualExp' db) es -- FIXME: Doesn’t seem right.
   UnboxedTupE es -> UnboxedTupE <$> traverse (dualExp' db) es
+#endif
   -- UnboxedSumE e alt ar ->
   --   UnboxedTupE <$> traverse (dualExp' db) es <*> pure alt <*> pure ar
   CondE t c a -> CondE <$> dualExp' db t <*> dualExp' db c <*> dualExp' db a
@@ -230,7 +253,11 @@ dualExp' db = \case
     MultiIfE <$> traverse (bisequence . (dualGuard' db *** dualExp' db)) cases
   LetE ds e -> LetE <$> traverse (dualDec' db) ds <*> dualExp' db e
   CaseE e ms -> CaseE <$> dualExp' db e <*> traverse (dualMatch' db) ms
+#if MIN_VERSION_template_haskell(2, 17, 0)
+  DoE m ss -> DoE m <$> traverse (dualStmt' db) ss
+#else
   DoE ss -> DoE <$> traverse (dualStmt' db) ss
+#endif
   CompE ss -> CompE <$> traverse (dualStmt' db) ss
   ArithSeqE r -> pure $ ArithSeqE r
   ListE es -> ListE <$> traverse (dualExp' db) es
@@ -388,9 +415,13 @@ dualCon' db coname = \case
   RecGadtC ns vbts t -> undefined -- and here?
 
 dualTySynEqn' :: Map Name Type -> TySynEqn -> ExceptT Type Q TySynEqn
+#if MIN_VERSION_template_haskell(2, 15, 0)
+dualTySynEqn' db (TySynEqn bs t t') =
+  TySynEqn bs <$> dualType' db t <*> dualType' db t'
+#else
 dualTySynEqn' db (TySynEqn ts t) =
   TySynEqn <$> traverse (dualType' db) ts <*> dualType' db t
-
+#endif
 
 dualizeDec :: DualMappings -> Name -> Dec -> Q [Dec]
 dualizeDec db coname d =
