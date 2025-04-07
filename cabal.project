@@ -1,0 +1,11 @@
+flags:
+  -noisy-deprecations
+
+program-options
+  ghc-options:
+    -Werror
+
+tests: True
+
+packages:
+  ./dualizer/dualizer.cabal

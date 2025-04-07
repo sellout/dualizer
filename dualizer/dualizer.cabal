@@ -1,0 +1,222 @@
+cabal-version: 3.0
+
+name: dualizer
+version: 0.2.0.0
+synopsis: Automatically generate dual constructions
+description: A library for defining duals automatically, as well as labeling duals in existing packages.
+author: Greg Pfeil <greg@technomadic.org>
+maintainer: Greg Pfeil <greg@technomadic.org>
+copyright: 2017-2024 Greg Pfeil
+homepage: https://github.com/sellout/dualizer#readme
+bug-reports: https://github.com/sellout/dualizer/issues
+category: Categories
+build-type: Custom
+license: AGPL-3.0-or-later
+license-files:
+  LICENSE
+extra-doc-files:
+  CHANGELOG.md
+  README.md
+  docs/*.md
+tested-with:
+  GHC == {
+    7.10.3,
+    8.0.2,
+    8.2.2,
+    8.4.1,
+    8.6.1,
+    8.8.1,
+    8.10.1, 8.10.7,
+    9.0.1, 9.0.2,
+    9.2.1, 9.2.5,
+    9.4.1, 9.4.5,
+    9.6.1, 9.6.3,
+    9.8.1,
+    9.10.1
+  }
+
+source-repository head
+  type: git
+  location: https://github.com/sellout/dualizer
+
+-- This mimics the GHC2024 extension
+-- (https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/control.html?highlight=doandifthenelse#extension-GHC2024),
+-- but supporting compilers back to GHC 7.10. If the oldest supported compiler
+-- is GHC 9.10, then this stanza can be removed and `import: GHC2024` can be
+-- replaced by `default-language: GHC2024`. If the oldest supported compiler is
+-- GHC 9.2, then this can be simplified by setting `default-language: GHC2021`
+-- and only including the extensions added by GHC2024.
+common GHC2024
+  default-language: Haskell2010
+  default-extensions:
+    BangPatterns
+    BinaryLiterals
+    ConstraintKinds
+    DataKinds
+    DeriveDataTypeable
+    DeriveGeneric
+    -- DeriveLift -- uncomment if the oldest supported version is GHC 8.10.1+
+    DeriveTraversable
+    -- DerivingStrategies -- uncomment if the oldest supported version is GHC 8.2.1+
+    DisambiguateRecordFields
+    DoAndIfThenElse
+    EmptyCase
+    ExistentialQuantification
+    FlexibleContexts
+    FlexibleInstances
+    GADTs
+    GeneralizedNewtypeDeriving
+    -- HexFloatLiterals -- uncomment if the oldest supported version is GHC 8.4.1+
+    -- ImportQualifiedPost -- uncomment if the oldest supported version is GHC 8.10.1+
+    InstanceSigs
+    LambdaCase
+    MagicHash
+    MonadComprehensions
+    MonomorphismRestriction
+    MultiParamTypeClasses
+    NamedFieldPuns
+    NamedWildCards
+    -- NumericUnderscores -- uncomment if the oldest supported version is GHC 8.6.1+
+    PolyKinds
+    PostfixOperators
+    RankNTypes
+    RoleAnnotations
+    ScopedTypeVariables
+    StandaloneDeriving
+    -- StandaloneKindSignatures -- uncomment if the oldest supported version is GHC 8.10.1+
+    TupleSections
+    -- TypeApplications -- uncomment if the oldest supported version is GHC 8.0.1+
+    TypeOperators
+    UnicodeSyntax
+
+flag noisy-deprecations
+  description:
+    Prior to GHC 9.10, the `DEPRECATED` pragma can’t distinguish between terms
+    and types. Consenquently, you can get spurious warnings when there’s a name
+    collision and the name in the other namespace is deprecated. Or you can
+    choose to not get those warnings, at the risk of not being warned when
+    there’s a name collision and the namespace you’re referencing is the one
+    that’s deprecated.
+
+common defaults
+  import: GHC2024
+  build-depends:
+    base ^>= {4.8.2, 4.9.1, 4.10.1, 4.11.0, 4.12.0, 4.13.0, 4.14.0, 4.15.0, 4.16.0, 4.17.0, 4.18.0, 4.19.0, 4.20.0},
+  ghc-options:
+  if impl(ghc >= 8.0.1)
+    ghc-options:
+      -Weverything
+      -- This one just reports unfixable things, AFAICT.
+      -Wno-all-missed-specialisations
+      -- Type inference good.
+      -Wno-missing-local-signatures
+      -- Warns even when `Unsafe` is explicit, not inferred. See
+      -- https://gitlab.haskell.org/ghc/ghc/-/issues/16689
+      -Wno-unsafe
+    if impl(ghc < 8.8.1)
+      ghc-options:
+        -- This used to warn even when `Safe` was explicit.
+        -Wno-safe
+  else
+    ghc-options:
+      -Wall
+  -- remove if the oldest supported version is GHC 8.10.1+
+  if impl(ghc >= 8.10.1)
+    ghc-options:
+      -Wno-prepositive-qualified-module
+  -- remove if the oldest supported version is GHC 9.2.1+
+  if impl(ghc >= 9.2.1)
+    ghc-options:
+      -Wno-missing-kind-signatures
+  if impl(ghc >= 9.8.1)
+    ghc-options:
+      -- remove if the oldest supported version is GHC 9.2.1+
+      -Wno-missing-poly-kind-signatures
+      -- Inference good.
+      -Wno-missing-role-annotations
+  default-extensions:
+    -- BlockArguments - uncomment if the oldest supported version is GHC 8.6.1+
+    DefaultSignatures
+    ExplicitNamespaces
+    FunctionalDependencies
+    LiberalTypeSynonyms
+    -- replace with `LexicalNegation` if the oldest supported version is GHC 9.0.1+
+    NegativeLiterals
+    PackageImports
+    ParallelListComp
+    -- QualifiedDo - uncomment if the oldest supported version is GHC 9.0.1+
+    RecursiveDo
+    -- RequiredTypeArguments - uncomment if the oldest supported version is GHC 9.10.1+
+    -- TemplateHaskellQuotes - uncomment if the oldest supported version is GHC 8.0.1+
+    TransformListComp
+    NoGeneralizedNewtypeDeriving
+    NoImplicitPrelude
+    NoMonomorphismRestriction
+    NoPatternGuards
+    -- NoStarIsType - uncomment if the oldest supported version is GHC 8.6.1+
+    -- NoTypeApplications - uncomment if the oldest supported version is GHC 8.0.1+
+  if impl(ghc >= 8.0.1)
+    default-extensions:
+      StrictData
+  if flag(noisy-deprecations)
+    cpp-options: -DSELLOUT_NOISY_DEPRECATIONS
+
+custom-setup
+  setup-depends:
+    -- TODO: Remove `Cabal` dep once haskell/cabal#3751 is fixed.
+    Cabal ^>= {3.0.0, 3.2.0, 3.4.0, 3.6.0, 3.8.0, 3.10.0},
+    base ^>= {4.8.2, 4.9.0, 4.10.0, 4.11.0, 4.12.0, 4.13.0, 4.14.0, 4.15.0, 4.16.0, 4.17.0, 4.18.0, 4.19.0, 4.20.0},
+    cabal-doctest ^>= {1.0.0},
+
+library
+  import: defaults
+  hs-source-dirs: src
+  build-depends:
+    bifunctors,
+    comonad,
+    containers,
+    lens,
+    template-haskell,
+    transformers,
+  exposed-modules:
+    Categorical.Dual
+    Categorical.Dual.Base
+    Categorical.Dual.Example
+    Categorical.Dual.Lens
+    Categorical.Dual.Prelude
+
+test-suite doctests
+  import: defaults
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests
+  main-is: doctests.hs
+  build-depends:
+    doctest ^>= {0.16.0, 0.17.0, 0.18.0, 0.19.0, 0.20.0, 0.21.0, 0.22.0},
+    dualizer,
+  if impl(ghc >= 8.10.1)
+    ghc-options:
+      -- `doctest` requires the package containing the doctests as a dependency
+      -- to ensure it gets built before this test-suite, even though the package
+      -- appears to be unused.
+      -Wno-unused-packages
+  -- TODO: The sections below here are necessary because we don’t have control
+  --       over the generated `Build_doctests.hs` file. So we have to silence
+  --       all of its warnings one way or another.
+  if impl(ghc >= 8.0.1)
+    ghc-options:
+      -Wno-missing-import-lists
+      -Wno-safe
+  else
+    ghc-options:
+      -fno-warn-missing-import-lists
+  if impl(ghc >= 8.4.1)
+    ghc-options:
+      -Wno-missing-export-lists
+  if impl(ghc >= 8.8.1)
+    ghc-options:
+      -Wno-missing-deriving-strategies
+  default-extensions:
+    -- Since we can’t add `{-# LANGUAGE Safe -#}` to the generated
+    -- “Build_doctests.hs”, we set it here, and that means it has to match
+    -- doctests.hs, which is `Unsafe`.
+    Unsafe
