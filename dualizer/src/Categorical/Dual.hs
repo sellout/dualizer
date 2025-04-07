@@ -6,7 +6,6 @@
 -- FIXME: remove these
 {-# OPTIONS_GHC -Wwarn=incomplete-patterns
     -Wwarn=name-shadowing
-    -Wwarn=unused-do-bind
     -Wwarn=unused-matches #-}
 
 -- | Operations to connect dual constructions.
@@ -458,8 +457,8 @@ makeDualClass name co methods = do
     ClassI (ClassD ctx _ tVars fds _) _ -> do
       ctx' <- traverse dualType ctx
       meths' <- traverse (sequenceA . (mkName *** ((dualType . stripForall) <=< typeFromName)) . swap) methods
-      labelDualDataT name coname type' (ConT coname)
-      pure [ClassD ctx' coname tVars fds (fmap (uncurry SigD) meths')]
+      (ClassD ctx' coname tVars fds (fmap (uncurry SigD) meths') :)
+        <$> labelDualDataT name coname type' (ConT coname)
     _ -> fail "not a type class"
 
 makeDualExp :: String -> Q Type -> Q Exp -> String -> Q [Dec]
