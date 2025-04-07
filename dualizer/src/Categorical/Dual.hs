@@ -5,6 +5,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE Unsafe #-}
 -- FIXME: remove these
 {-# LANGUAGE ImplicitPrelude #-}
 {-# OPTIONS_GHC
@@ -12,7 +13,6 @@
     -Wwarn=incomplete-patterns
     -Wwarn=missing-deriving-strategies
     -Wwarn=missing-import-lists
-    -Wwarn=missing-safe-haskell-mode
     -Wwarn=name-shadowing
     -Wwarn=unused-do-bind
     -Wwarn=unused-imports
@@ -37,23 +37,23 @@ module Categorical.Dual
   , labelSemiDual
   ) where
 
-import           Control.Arrow
-import           Control.Comonad
-import           Control.Lens
-import           Control.Monad
-import           Control.Monad.Trans.Class
-import           Control.Monad.Trans.Except
-import           Data.Bitraversable
-import           Data.Data
-import qualified Data.Map as Map
-import           Data.Map (Map)
-import           Data.Maybe
-import           Data.Monoid
-import           Data.Tuple
-import           Data.Void
-import           Language.Haskell.TH
-import           Language.Haskell.TH.Quote
-import           Language.Haskell.TH.Syntax hiding (lift)
+import safe           Control.Arrow
+import safe           Control.Comonad
+import safe           Control.Lens
+import safe           Control.Monad
+import safe           Control.Monad.Trans.Class
+import safe           Control.Monad.Trans.Except
+import safe           Data.Bitraversable
+import safe           Data.Data
+import safe qualified Data.Map as Map
+import safe           Data.Map (Map)
+import safe           Data.Maybe
+import safe           Data.Monoid
+import safe           Data.Tuple
+import safe           Data.Void
+import safe           Language.Haskell.TH
+import safe           Language.Haskell.TH.Quote
+import safe           Language.Haskell.TH.Syntax hiding (lift)
 
 data DualMappings = DualMappings {
   _dualTypes :: Map Name Type,

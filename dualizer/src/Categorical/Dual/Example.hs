@@ -4,11 +4,11 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE Unsafe #-}
 -- FIXME: remove these
 {-# LANGUAGE ImplicitPrelude #-}
 {-# OPTIONS_GHC -Wwarn=implicit-prelude
     -Wwarn=missing-import-lists
-    -Wwarn=missing-safe-haskell-mode
     -Wwarn=unused-top-binds #-}
 
 -- | This should be tests, but if you look for the source of this module,
@@ -54,9 +54,9 @@ where
 import Categorical.Dual
 import Categorical.Dual.Base
 import Categorical.Dual.Lens
-import Control.Arrow
-import Data.Char
-import Data.Void
+import safe Control.Arrow
+import safe Data.Char
+import safe Data.Void
 
 importDuals baseDuals
 importDuals lensDuals

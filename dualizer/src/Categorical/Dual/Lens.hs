@@ -1,16 +1,16 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE Unsafe #-}
 -- FIXME: remove this
 {-# OPTIONS_GHC -Wwarn=implicit-prelude
     -Wwarn=missing-export-lists
-    -Wwarn=missing-import-lists
-    -Wwarn=missing-safe-haskell-mode #-}
+    -Wwarn=missing-import-lists #-}
 
 -- | Dual mappings for types in 'lens'.
 module Categorical.Dual.Lens where
 
 import Categorical.Dual
 import Categorical.Dual.Prelude
-import Control.Lens
+import safe Control.Lens
 
 importDuals preludeDuals
 
