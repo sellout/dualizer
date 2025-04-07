@@ -5,8 +5,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE Unsafe #-}
--- FIXME: remove these
-{-# OPTIONS_GHC -Wwarn=unused-top-binds #-}
 
 {- ORMOLU_DISABLE -}
 {- because it can’t handle CPP within a declaration -}
@@ -46,6 +44,11 @@ module Categorical.Dual.Example
     cata,
     ana,
     exampleDuals,
+    testF,
+    testT,
+    testV,
+    testV',
+    testQ,
   )
 where
 {- ORMOLU_ENABLE -}

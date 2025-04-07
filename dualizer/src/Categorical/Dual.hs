@@ -11,18 +11,19 @@
     -Wwarn=missing-deriving-strategies
     -Wwarn=name-shadowing
     -Wwarn=unused-do-bind
-    -Wwarn=unused-matches
-    -Wwarn=unused-top-binds #-}
+    -Wwarn=unused-matches #-}
 
 -- | Operations to connect dual constructions.
 module Categorical.Dual
   ( importDuals,
     exportDuals,
     emptyDuals, -- shouldn’t export this
+    shareDuals,
     dualType,
     dualExp,
     makeDualClass,
     makeDualDec,
+    makeDualExp,
     labelDual,
     labelSelfDual,
     labelSemiDual,
@@ -498,9 +499,6 @@ importDuals duals = do
   newDuals <- duals
   putQ $ maybe newDuals (newDuals <>) oldDuals
   pure []
-
-errorNewName :: Name -> Q a
-errorNewName n = fail $ "declaration introduces a new name: " ++ show n
 
 errorMultipleNewNames :: Name -> Q a
 errorMultipleNewNames n =
