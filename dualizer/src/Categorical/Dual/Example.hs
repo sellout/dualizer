@@ -14,7 +14,6 @@
 -- | This should be tests, but if you look for the source of this module,
 --   you’ll see how to use the package.
 module Categorical.Dual.Example
--- explicit exports to hide some things that break Haddock
   ( Coapplicative (..),
     Comonad (..),
 #if !MIN_VERSION_GLASGOW_HASKELL(8, 10, 0, 0) || MIN_VERSION_GLASGOW_HASKELL(9, 4, 0, 0)

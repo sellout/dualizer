@@ -2,11 +2,13 @@
 {-# LANGUAGE Unsafe #-}
 -- FIXME: remove this
 {-# OPTIONS_GHC -Wwarn=implicit-prelude
-    -Wwarn=missing-export-lists
     -Wwarn=missing-import-lists #-}
 
 -- | Dual mappings for types in 'lens'.
-module Categorical.Dual.Lens where
+module Categorical.Dual.Lens
+  ( lensDuals,
+  )
+where
 
 import Categorical.Dual
 import Categorical.Dual.Prelude
