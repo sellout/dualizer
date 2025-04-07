@@ -1,7 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE Unsafe #-}
--- FIXME: remove this
-{-# OPTIONS_GHC -Wwarn=missing-import-lists #-}
 
 -- | Dual mappings for types in 'base'.
 module Categorical.Dual.Base
@@ -10,10 +8,27 @@ module Categorical.Dual.Base
 where
 
 import Categorical.Dual
-import Categorical.Dual.Prelude
+  ( exportDuals,
+    importDuals,
+    labelDual,
+    labelSelfDual,
+    labelSemiDual,
+  )
+import Categorical.Dual.Prelude (preludeDuals)
 import safe Control.Arrow
-import safe Control.Category
-import safe Prelude hiding (id)
+  ( Arrow,
+    arr,
+    returnA,
+    (&&&),
+    (***),
+    (+++),
+    (<<<),
+    (>>>),
+    (|||),
+  )
+import safe Control.Category (Category)
+import safe qualified Control.Category as Category
+import safe qualified Prelude as Prelude
 
 importDuals preludeDuals
 
@@ -24,9 +39,10 @@ labelDual '(&&&) '(|||)
 labelSelfDual 'returnA
 
 labelSelfDual ''Category
-labelSelfDual 'id
+labelSelfDual 'Prelude.id
+labelSelfDual 'Category.id
 labelSemiDual '(Prelude..) '(>>>)
-labelSemiDual '(Control.Category..) '(>>>)
+labelSemiDual '(Category..) '(>>>)
 labelDual '(<<<) '(>>>)
 
 -- | Duals for 'base'.

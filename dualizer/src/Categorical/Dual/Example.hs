@@ -6,9 +6,10 @@
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE Unsafe #-}
 -- FIXME: remove these
-{-# OPTIONS_GHC -Wwarn=missing-import-lists
-    -Wwarn=unused-top-binds #-}
+{-# OPTIONS_GHC -Wwarn=unused-top-binds #-}
 
+{- ORMOLU_DISABLE -}
+{- because it can’t handle CPP within a declaration -}
 -- | This should be tests, but if you look for the source of this module,
 --   you’ll see how to use the package.
 module Categorical.Dual.Example
@@ -47,21 +48,41 @@ module Categorical.Dual.Example
     exampleDuals,
   )
 where
+{- ORMOLU_ENABLE -}
 
 import Categorical.Dual
-import Categorical.Dual.Base
-import Categorical.Dual.Lens
-import safe Control.Arrow
-import safe Data.Char
-import safe Data.Void
-import safe Prelude
+  ( dualType,
+    exportDuals,
+    importDuals,
+    labelDual,
+    labelSelfDual,
+    labelSemiDual,
+    makeDualClass,
+    makeDualDec,
+  )
+import Categorical.Dual.Base (baseDuals)
+import Categorical.Dual.Lens (lensDuals)
+import safe Control.Applicative (Applicative, pure)
+import safe Control.Arrow ((>>>))
+import safe Control.Category ((.))
+import safe Control.Monad (Monad, (=<<), (>>=))
+import safe Data.Bool (Bool)
+import safe Data.Char (Char, ord)
+import safe Data.Either (Either (Right))
+import safe Data.Foldable (Foldable)
+import safe Data.Function (($))
+import safe Data.Functor (Functor, fmap)
+import safe Data.Int (Int)
+import safe Data.Traversable (Traversable, sequenceA, traverse)
+import safe Data.Void (Void)
+import safe Prelude (undefined)
 
 importDuals baseDuals
 importDuals lensDuals
 
 -- TODO: this is much uglier than type families
 testF :: $(dualType =<< [t|Int -> Char|])
-testF = Data.Char.ord
+testF = ord
 
 testT :: $(dualType =<< [t|Either Int Char|])
 testT = (7, 'a')

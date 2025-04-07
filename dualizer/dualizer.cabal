@@ -172,7 +172,6 @@ library
   import: defaults
   hs-source-dirs: src
   build-depends:
-    comonad,
     containers,
     lens,
     template-haskell,
