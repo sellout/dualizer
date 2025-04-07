@@ -6,9 +6,7 @@
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE Unsafe #-}
 -- FIXME: remove these
-{-# LANGUAGE ImplicitPrelude #-}
-{-# OPTIONS_GHC -Wwarn=implicit-prelude
-    -Wwarn=missing-import-lists
+{-# OPTIONS_GHC -Wwarn=missing-import-lists
     -Wwarn=unused-top-binds #-}
 
 -- | This should be tests, but if you look for the source of this module,
@@ -56,6 +54,7 @@ import Categorical.Dual.Lens
 import safe Control.Arrow
 import safe Data.Char
 import safe Data.Void
+import safe Prelude
 
 importDuals baseDuals
 importDuals lensDuals

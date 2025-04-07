@@ -1,9 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE Unsafe #-}
 -- FIXME: remove these
-{-# LANGUAGE ImplicitPrelude #-}
-{-# OPTIONS_GHC -Wwarn=implicit-prelude
-    -Wwarn=missing-import-lists #-}
+{-# OPTIONS_GHC -Wwarn=missing-import-lists #-}
 
 -- | Dual mappings for types in the 'Prelude'.
 module Categorical.Dual.Prelude
@@ -12,6 +10,7 @@ module Categorical.Dual.Prelude
 where
 
 import Categorical.Dual
+import safe Prelude
 
 importDuals emptyDuals
 

@@ -1,8 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE Unsafe #-}
 -- FIXME: remove this
-{-# OPTIONS_GHC -Wwarn=implicit-prelude
-    -Wwarn=missing-import-lists #-}
+{-# OPTIONS_GHC -Wwarn=missing-import-lists #-}
 
 -- | Dual mappings for types in 'base'.
 module Categorical.Dual.Base

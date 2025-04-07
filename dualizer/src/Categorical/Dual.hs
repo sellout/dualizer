@@ -7,9 +7,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Unsafe #-}
 -- FIXME: remove these
-{-# LANGUAGE ImplicitPrelude #-}
 {-# OPTIONS_GHC
-    -Wwarn=implicit-prelude
     -Wwarn=incomplete-patterns
     -Wwarn=missing-deriving-strategies
     -Wwarn=missing-import-lists
@@ -54,6 +52,7 @@ import safe           Data.Void
 import safe           Language.Haskell.TH
 import safe           Language.Haskell.TH.Quote
 import safe           Language.Haskell.TH.Syntax hiding (lift)
+import safe           Prelude
 
 data DualMappings = DualMappings {
   _dualTypes :: Map Name Type,
