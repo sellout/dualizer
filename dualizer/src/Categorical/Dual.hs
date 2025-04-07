@@ -13,7 +13,6 @@
     -Wwarn=missing-deriving-strategies
     -Wwarn=missing-import-lists
     -Wwarn=missing-safe-haskell-mode
-    -Wwarn=missing-signatures
     -Wwarn=name-shadowing
     -Wwarn=unused-do-bind
     -Wwarn=unused-imports
@@ -377,8 +376,13 @@ makeDualExp str type' exp' costr = do
 --   uses this module.
 exportDuals :: String -> Q [Dec]
 exportDuals name = do
+  typ <- [t|Q DualMappings|]
   exp <- reifyDuals =<< retrieveDuals
-  pure [ValD (VarP $ mkName name) (NormalB exp) []]
+  let name' = mkName name
+  pure
+    [ SigD name' typ,
+      ValD (VarP name') (NormalB exp) []
+    ]
 
 -- | Imports duals from other modules via the var created by `exportDuals` in
 --   that other module.

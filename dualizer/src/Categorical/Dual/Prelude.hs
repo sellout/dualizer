@@ -3,10 +3,8 @@
 {-# LANGUAGE ImplicitPrelude #-}
 {-# OPTIONS_GHC -Wwarn=implicit-prelude
     -Wwarn=missing-export-lists
-    -Wwarn=missing-exported-signatures
     -Wwarn=missing-import-lists
-    -Wwarn=missing-safe-haskell-mode
-    -Wwarn=missing-signatures #-}
+    -Wwarn=missing-safe-haskell-mode #-}
 
 -- | Dual mappings for types in the 'Prelude'.
 module Categorical.Dual.Prelude where

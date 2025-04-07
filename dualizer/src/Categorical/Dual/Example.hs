@@ -7,10 +7,8 @@
 -- FIXME: remove these
 {-# LANGUAGE ImplicitPrelude #-}
 {-# OPTIONS_GHC -Wwarn=implicit-prelude
-    -Wwarn=missing-exported-signatures
     -Wwarn=missing-import-lists
     -Wwarn=missing-safe-haskell-mode
-    -Wwarn=missing-signatures
     -Wwarn=unused-top-binds #-}
 
 -- | This should be tests, but if you look for the source of this module,
