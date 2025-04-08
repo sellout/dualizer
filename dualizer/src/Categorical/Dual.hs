@@ -34,17 +34,16 @@ import safe Control.Monad.Trans.Except
     withExceptT,
   )
 import safe Data.Bitraversable (bisequence)
-import safe Data.Containers.ListUtils (nubOrd)
 import safe Data.Data (Data)
 import safe Data.Either (Either (Left, Right), either)
 import safe Data.Eq (Eq)
 import safe Data.Function (const, flip, ($))
 import safe Data.Functor (fmap, (<$>))
-import safe Data.List ((++))
+import safe Data.List (nub, (++))
 import safe Data.Map (Map)
 import safe qualified Data.Map as Map
 import safe Data.Maybe (maybe)
-import safe Data.Monoid (Monoid, mempty)
+import safe Data.Monoid (Monoid, mappend, mempty)
 import safe Data.Semigroup (Semigroup, (<>))
 import safe Data.String (String)
 import safe Data.Traversable (sequenceA, traverse)
@@ -86,6 +85,7 @@ instance Semigroup DualMappings where
     DualMappings (t' `Map.union` t) (v' `Map.union` v)
 
 instance Monoid DualMappings where
+  mappend = (<>)
   mempty = DualMappings Map.empty Map.empty
 
 -- | The empty set of duals, should only be used to initalize the duals for
@@ -123,7 +123,7 @@ fromInfo = \case
   TH.DataConI n t _ -> pure . Indeed t $ TH.ConE n
   TH.VarI n t _ -> pure . Indeed t $ TH.VarE n
   TH.TyVarI _ t -> pure $ Only t
-#if MIN_VERSION_template_haskell(2, 16, 0)
+#if MIN_VERSION_template_haskell(2, 12, 0)
   TH.PatSynI _ _ -> fail "pattern synonym is not a type"
 #endif
 
@@ -195,12 +195,16 @@ dualType' db = \case
 #endif
 #if MIN_VERSION_template_haskell(2, 16, 0)
   TH.ForallVisT vs t -> TH.ForallVisT vs <$> dualType' db t
-  TH.AppKindT t k -> TH.AppKindT <$> dualType' db t <*> pure k
-  TH.UnboxedSumT a -> pure $ TH.UnboxedTupleT a
   TH.UnboxedTupleT i -> pure $ TH.UnboxedSumT i
-  TH.ImplicitParamT n t -> TH.ImplicitParamT n <$> dualType' db t
 #else
   f@(TH.UnboxedTupleT _) -> throwE f
+#endif
+#if MIN_VERSION_template_haskell(2, 15, 0)
+  TH.AppKindT t k -> TH.AppKindT <$> dualType' db t <*> pure k
+  TH.ImplicitParamT n t -> TH.ImplicitParamT n <$> dualType' db t
+#endif
+#if MIN_VERSION_template_haskell(2, 12, 0)
+  TH.UnboxedSumT a -> pure $ TH.UnboxedTupleT a
 #endif
 
 exceptT :: (Monad m) => (t1 -> m c) -> (t2 -> m c) -> ExceptT t1 m t2 -> m c
@@ -231,6 +235,7 @@ dualPat' db = \case
   TH.LitP l -> pure $ TH.LitP l
   TH.VarP n -> pure $ TH.VarP n
   TH.TupP ps -> TH.TupP <$> traverse (dualPat' db) ps -- FIXME: should also Either?
+  p@(TH.UnboxedTupP _ps) -> lift . fail $ "unhandled pattern " ++ show p
   p@(TH.InfixP _p _n _p') -> lift . fail $ "unhandled pattern " ++ show p
   p@(TH.UInfixP _p _n _p') -> lift . fail $ "unhandled pattern " ++ show p
   p@(TH.ParensP _p) -> lift . fail $ "unhandled pattern " ++ show p
@@ -251,8 +256,7 @@ dualPat' db = \case
 #else
   p@(TH.ConP _n _ps) -> lift . fail $ "unhandled pattern " ++ show p
 #endif
-#if MIN_VERSION_template_haskell(2, 16, 0)
-  p@(TH.UnboxedTupP _ps) -> lift . fail $ "unhandled pattern " ++ show p
+#if MIN_VERSION_template_haskell(2, 12, 0)
   p@(TH.UnboxedSumP _p _a _a') -> lift . fail $ "unhandled pattern " ++ show p
 #endif
 
@@ -315,25 +319,34 @@ dualExp' db = \case
 #endif
 #if MIN_VERSION_template_haskell(2, 17, 0)
   TH.DoE m ss -> TH.DoE m <$> traverse (dualStmt' db) ss
-  TH.MDoE m ss -> TH.MDoE m <$> traverse (dualStmt' db) ss
 #else
   TH.DoE ss -> TH.DoE <$> traverse (dualStmt' db) ss
-  TH.MDoE ss -> TH.MDoE <$> traverse (dualStmt' db) ss
 #endif
 #if MIN_VERSION_template_haskell(2, 16, 0)
   TH.TupE es -> TH.TupE <$> traverse (traverse $ dualExp' db) es -- FIXME: Doesn’t seem right.
   TH.UnboxedTupE es -> TH.UnboxedTupE <$> traverse (traverse $ dualExp' db) es
+#else
+  TH.TupE es -> TH.TupE <$> traverse (dualExp' db) es -- FIXME: Doesn’t seem right.
+  e@(TH.UnboxedTupE _) -> throwE $ pure e
+#endif
+#if MIN_VERSION_template_haskell(2, 15, 0)
+#if MIN_VERSION_template_haskell(2, 17, 0)
+  TH.MDoE m ss -> TH.MDoE m <$> traverse (dualStmt' db) ss
+#else
+  TH.MDoE ss -> TH.MDoE <$> traverse (dualStmt' db) ss
+#endif
+  TH.ImplicitParamVarE n -> pure $ TH.ImplicitParamVarE n
+#endif
+#if MIN_VERSION_template_haskell(2, 13, 0)
+  TH.LabelE l -> pure $ TH.LabelE l
+#endif
+#if MIN_VERSION_template_haskell(2, 12, 0)
   TH.AppTypeE e t ->
     TH.AppTypeE
       <$> dualExp' db e
       <*> withExceptT Left (dualType' (_dualTypes db) t)
   TH.UnboxedSumE e alt ar ->
     TH.UnboxedSumE <$> dualExp' db e <*> pure alt <*> pure ar
-  TH.LabelE l -> pure $ TH.LabelE l
-  TH.ImplicitParamVarE n -> pure $ TH.ImplicitParamVarE n
-#else
-  TH.TupE es -> TH.TupE <$> traverse (dualExp' db) es -- FIXME: Doesn’t seem right.
-  e@(TH.UnboxedTupE _) -> throwE $ pure e
 #endif
 
 dualClause' :: DualMappings -> Clause -> ExceptT (Either TH.Type TH.Exp) Q Clause
@@ -349,7 +362,7 @@ dualStmt' db = \case
   TH.LetS ds -> TH.LetS <$> traverse (dualDec' db) ds
   TH.NoBindS e -> TH.NoBindS <$> dualExp' db e
   TH.ParS sss -> TH.ParS <$> traverse (traverse (dualStmt' db)) sss
-#if MIN_VERSION_template_haskell(2, 16, 0)
+#if MIN_VERSION_template_haskell(2, 15, 0)
   TH.RecS ss -> TH.RecS <$> traverse (dualStmt' db) ss
 #endif
 
@@ -449,7 +462,7 @@ makeDualClass name co methods = do
   type' <- typeFromName name
   case info of
     TH.ClassI (TH.ClassD ctx _ tVars fds _) _ -> do
-      ctx' <- nubOrd <$> traverse dualType ctx
+      ctx' <- nub <$> traverse dualType ctx
       meths' <-
         traverse
           ( sequenceA
@@ -567,7 +580,6 @@ dualizeDec' db coname = \case
   TH.ClassD {} -> lift $ errorNoNewName
   TH.InstanceD {} -> lift $ errorNoNewName
   TH.SigD _ t -> TH.SigD coname <$> withExceptT Left (dualType' (_dualTypes db) t)
-  TH.KiSigD {} -> lift $ errorNoNewName
   TH.ForeignD {} -> lift $ errorNoNewName
   TH.InfixD {} -> lift $ errorNoNewName
   TH.PragmaD {} -> lift $ errorNoNewName
@@ -580,17 +592,24 @@ dualizeDec' db coname = \case
   TH.ClosedTypeFamilyD (TypeFamilyHead _n tvbs frs ia) tses ->
     TH.ClosedTypeFamilyD (TypeFamilyHead coname tvbs frs ia)
       <$> withExceptT Left (traverse (dualTySynEqn' $ _dualTypes db) tses)
-  TH.RoleAnnotD {} -> lift $ errorNoNewName
-  TH.StandaloneDerivD {} -> lift $ errorNoNewName
-  TH.DefaultSigD {} -> lift $ errorNoNewName
-  TH.PatSynD {} -> lift $ errorNoNewName
-  TH.PatSynSigD {} -> lift $ errorNoNewName
-  TH.ImplicitParamBindD {} -> lift $ errorNoNewName
+  TH.RoleAnnotD {} -> lift errorNoNewName
+  TH.StandaloneDerivD {} -> lift errorNoNewName
+  TH.DefaultSigD {} -> lift errorNoNewName
 #if MIN_VERSION_template_haskell(2, 20, 0)
   TH.TypeDataD {} -> lift $ errorNoNewName
 #endif
 #if MIN_VERSION_template_haskell(2, 19, 0)
   TH.DefaultD {} -> lift $ errorNoNewName
+#endif
+#if MIN_VERSION_template_haskell(2, 16, 0)
+  TH.KiSigD {} -> lift $ errorNoNewName
+#endif
+#if MIN_VERSION_template_haskell(2, 15, 0)
+  TH.ImplicitParamBindD {} -> lift $ errorNoNewName
+#endif
+#if MIN_VERSION_template_haskell(2, 12, 0)
+  TH.PatSynD {} -> lift errorNoNewName
+  TH.PatSynSigD {} -> lift errorNoNewName
 #endif
 
 -- | Creates both the original declaration and its dual. Should only work for

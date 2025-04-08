@@ -62,6 +62,17 @@
     ghcVersions = self.lib.nonNixTestedGhcVersions;
     cabalPackages = {"${config.project.name}" = config.project.name;};
     latestGhcVersion = "9.10.1";
+    exclude = [
+      {
+        ghc = "9.4.1";
+        os = "macos-14";
+      }
+    ];
+    include = map (bounds: {
+      inherit bounds;
+      ghc = "9.4.5";
+      os = "macos-14";
+    }) ["--prefer-oldest" ""];
   };
 
   ## publishing

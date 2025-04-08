@@ -3,7 +3,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE Unsafe #-}
 
 {- ORMOLU_DISABLE -}
@@ -29,8 +28,7 @@ module Categorical.Dual.Example
     DualA,
     TestB,
     DualB,
-#if MIN_VERSION_template_haskell(2, 16, 0)
-#else
+#if !MIN_VERSION_GLASGOW_HASKELL(8, 8, 0, 0)
     TestC,
     DualC,
 #endif
@@ -162,8 +160,7 @@ makeDualDec [d|data family TestA a |] "DualA"
 makeDualDec [d|type family TestB a |] "DualB"
 
 -- FIXME: Complains “‘TestC_0’ is not in scope at a reify”
-#if MIN_VERSION_template_haskell(2, 16, 0)
-#else
+#if !MIN_VERSION_GLASGOW_HASKELL(8, 8, 0, 0)
 -- | Happens.
 makeDualDec
   [d| type family TestC a where
