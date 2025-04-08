@@ -4,6 +4,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Unsafe #-}
+-- to allow hlint annotations
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {- ORMOLU_DISABLE -}
 {- because it can’t handle CPP within a declaration -}
@@ -76,6 +78,9 @@ import safe Data.Traversable (Traversable)
 import safe qualified Data.Traversable as T
 import safe Data.Void (Void)
 import safe Prelude (undefined)
+
+-- hlint sees some $() splices as redundant brackets
+{-# HLINT ignore "Redundant bracket" #-}
 
 importDuals baseDuals
 importDuals lensDuals
@@ -181,13 +186,13 @@ makeDualDec
 
 labelSelfDual '($)
 
-data Mu f = Mu (forall a. Algebra f a -> a)
+newtype Mu f = Mu (forall a. Algebra f a -> a)
 
 data Nu f where Nu :: Coalgebra f a -> a -> Nu f
 
 labelDual ''Mu ''Nu
 
-data Fix f = Fix {unfix :: f (Fix f)}
+newtype Fix f = Fix {unfix :: f (Fix f)}
 
 labelSelfDual ''Fix -- not really
 labelDual 'Fix 'unfix

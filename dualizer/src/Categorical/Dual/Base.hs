@@ -28,7 +28,7 @@ import safe Control.Arrow
   )
 import safe Control.Category (Category)
 import safe qualified Control.Category as Category
-import safe qualified Prelude as Prelude
+import safe qualified Prelude
 
 importDuals preludeDuals
 
