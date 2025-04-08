@@ -5,8 +5,7 @@
 {-# LANGUAGE Unsafe #-}
 -- FIXME: remove these
 {-# OPTIONS_GHC -Wwarn=incomplete-patterns
-    -Wwarn=name-shadowing
-    -Wwarn=unused-matches #-}
+    -Wwarn=name-shadowing #-}
 
 -- | Operations to connect dual constructions.
 module Categorical.Dual
@@ -194,7 +193,7 @@ fromName =
       TyConI (TySynD n _ _) -> pure . Only $ ConT n
       TyConI (NewtypeD _ n _ _ _ _) -> pure . Only $ ConT n
       TyConI d -> fail $ "unknown dec to extract name from: " ++ show d
-      FamilyI d _ -> fail "not yet getting type families" -- FIXME
+      FamilyI d _ -> fail $ "not yet getting type families – " ++ show d -- FIXME
       PrimTyConI n _ _ -> pure . Only $ ConT n
       DataConI n t _ -> pure . Indeed t $ ConE n
       -- PatSynI _ _ -> fail "pattern synonym is not a type"
@@ -238,14 +237,14 @@ dualType' db = \case
   VarT n -> pure $ VarT n
   ConT n -> dualTypeName db n
   PromotedT n -> pure $ PromotedT n
-  InfixT t n t' -> dualTypeName db n -- t t'
-  UInfixT t n t' -> dualTypeName db n -- t t'
+  InfixT _t n _t' -> dualTypeName db n -- t t'
+  UInfixT _t n _t' -> dualTypeName db n -- t t'
   (ParensT t) -> pure $ ParensT t
   (TupleT 0) -> pure $ ConT ''Void
   (TupleT 1) -> pure $ TupleT 1
   (TupleT 2) -> pure $ ConT ''Either
   f@(TupleT _) -> throwE f
-  f@(UnboxedTupleT i) -> throwE f -- pure $ UnboxedSumT i
+  f@(UnboxedTupleT _i) -> throwE f -- pure $ UnboxedSumT i
   -- UnboxedSumT a        -> pure $ UnboxedTupleT a
   ArrowT -> pure ArrowT
   EqualityT -> pure EqualityT
@@ -282,7 +281,7 @@ dualGuard' db = \case
   PatG ss -> PatG <$> traverse (dualStmt' db) ss
 
 dualDec' :: DualMappings -> Dec -> ExceptT (Either Type Exp) Q Dec
-dualDec' db = pure
+dualDec' _db = pure
 
 dualPat' :: DualMappings -> Pat -> ExceptT (Either Type Exp) Q Pat
 dualPat' db = \case
@@ -514,8 +513,8 @@ dualCon' db coname = \case
       <*> traverse (dualType' db) bt'
   ForallC tvbs cx cn ->
     ForallC tvbs <$> traverse (dualType' db) cx <*> dualCon' db coname cn
-  GadtC ns bts t -> undefined -- how do we handle the multiple names here
-  RecGadtC ns vbts t -> undefined -- and here?
+  GadtC _ns _bts _t -> undefined -- how do we handle the multiple names here
+  RecGadtC _ns _vbts _t -> undefined -- and here?
 
 dualTySynEqn' :: Map Name Type -> TySynEqn -> ExceptT Type Q TySynEqn
 #if MIN_VERSION_template_haskell(2, 15, 0)
@@ -540,7 +539,7 @@ dualizeDec db coname d =
           ValD (VarP coname)
             <$> dualBody' newMap b
             <*> traverse (dualDec' newMap) ds
-        DataD cx n tvbs k [cn] dcs ->
+        DataD cx _n tvbs k [cn] dcs ->
           withExceptT Left $
             DataD
               <$> traverse (dualType' (_dualTypes db)) cx
@@ -550,7 +549,7 @@ dualizeDec db coname d =
               <*> ((: []) <$> dualCon' (_dualTypes db) coname cn)
               <*> pure dcs -- Should actually dualize this
         DataD _ n _ _ _ _ -> lift $ errorMultipleNewNames n
-        NewtypeD cx n tvbs k cn dcs ->
+        NewtypeD cx _n tvbs k cn dcs ->
           withExceptT Left $
             NewtypeD
               <$> traverse (dualType' (_dualTypes db)) cx
@@ -563,9 +562,9 @@ dualizeDec db coname d =
           TySynD coname tvbs <$> withExceptT Left (dualType' (_dualTypes db) t)
         SigD _ t -> SigD coname <$> withExceptT Left (dualType' (_dualTypes db) t)
         DataFamilyD _ tvbs k -> pure $ DataFamilyD coname tvbs k
-        OpenTypeFamilyD (TypeFamilyHead n tvbs frs ia) ->
+        OpenTypeFamilyD (TypeFamilyHead _n tvbs frs ia) ->
           pure . OpenTypeFamilyD $ TypeFamilyHead coname tvbs frs ia
-        ClosedTypeFamilyD (TypeFamilyHead n tvbs frs ia) tses ->
+        ClosedTypeFamilyD (TypeFamilyHead _n tvbs frs ia) tses ->
           ClosedTypeFamilyD (TypeFamilyHead coname tvbs frs ia)
             <$> withExceptT Left (traverse (dualTySynEqn' $ _dualTypes db) tses)
         _ -> lift $ errorNoNewName
