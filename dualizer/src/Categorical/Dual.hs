@@ -4,8 +4,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Unsafe #-}
 -- FIXME: remove these
-{-# OPTIONS_GHC -Wwarn=incomplete-patterns
-    -Wwarn=name-shadowing #-}
+{-# OPTIONS_GHC -Wwarn=incomplete-patterns #-}
 
 -- | Operations to connect dual constructions.
 module Categorical.Dual
@@ -380,7 +379,10 @@ dualStmt' db = \case
 handleMissingDual :: ExceptT (Either Type Exp) Q a -> Q a
 handleMissingDual =
   exceptT
-    (\t -> fail $ "no dual for " ++ either (\t -> "type " ++ show t) (\e -> "expression " ++ show e) t)
+    ( fail
+        . ("no dual for " ++)
+        . either (("type " ++) . show) (("expression " ++) . show)
+    )
     pure
 
 -- | Convert an expression to its dual (i.e., an implementation for the dual
@@ -437,8 +439,8 @@ labelDual name coname = do
   a <- fromName name
   b <- fromName coname
   case (a, b) of
-    (Only a, Only b) -> labelDualDataT name coname a b
-    (Indeed _ a, Indeed _ b) -> labelDualExpT name coname a b
+    (Only a', Only b') -> labelDualDataT name coname a' b'
+    (Indeed _ a', Indeed _ b') -> labelDualExpT name coname a' b'
     (_, _) -> fail $ show name ++ " and " ++ show coname ++ "are not in the same namespace: " ++ show a ++ " " ++ show b
 
 stripForall :: Type -> Type
