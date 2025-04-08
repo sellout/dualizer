@@ -34,6 +34,7 @@ import safe Control.Monad.Trans.Except
     withExceptT,
   )
 import safe Data.Bitraversable (bisequence)
+import safe Data.Containers.ListUtils (nubOrd)
 import safe Data.Data (Data)
 import safe Data.Either (Either (Left, Right), either)
 import safe Data.Eq (Eq)
@@ -448,7 +449,7 @@ makeDualClass name co methods = do
   type' <- typeFromName name
   case info of
     TH.ClassI (TH.ClassD ctx _ tVars fds _) _ -> do
-      ctx' <- traverse dualType ctx
+      ctx' <- nubOrd <$> traverse dualType ctx
       meths' <-
         traverse
           ( sequenceA

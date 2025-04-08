@@ -13,9 +13,7 @@
 module Categorical.Dual.Example
   ( Coapplicative (..),
     Comonad (..),
-#if !MIN_VERSION_GLASGOW_HASKELL(8, 10, 0, 0) || MIN_VERSION_GLASGOW_HASKELL(9, 4, 0, 0)
     Distributive (..),
-#endif
     consume,
     Algebra,
     Coalgebra,
@@ -124,17 +122,12 @@ makeDualClass ''Monad "Comonad" [('(>>=), "=>>")]
 --        be too weak.
 labelSemiDual ''Foldable ''Functor
 
--- GHC 8.10–9.2 has a weird issue where you can’t actually silence duplicate constraints.
-#if !MIN_VERSION_GLASGOW_HASKELL(8, 10, 0, 0) || MIN_VERSION_GLASGOW_HASKELL(9, 4, 0, 0)
--- | Because `Foldable` is semi-dual to `Functor` (which isn’t safe), we end
---   up with a duplicate `Functor` constraint here.
 makeDualClass
   ''Traversable
   "Distributive"
   [ ('T.traverse, "cotraverse"),
     ('T.sequenceA, "distribute")
   ]
-#endif
 
 -- TODO: Doesn’t really belong here, but is the dual to `collect`.
 consume :: (Traversable g, Applicative f) => (g b -> a) -> g (f b) -> f a
@@ -174,7 +167,7 @@ makeDualDec [d|type family TestB a |] "DualB"
 -- | Happens.
 makeDualDec
   [d| type family TestC a where
-        TestC (Either b c) = b
+        TestC (Either b _c) = b
         TestC Int = Char |]
   "DualC"
 #endif
