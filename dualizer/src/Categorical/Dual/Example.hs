@@ -76,7 +76,8 @@ import safe Data.Foldable (Foldable)
 import safe Data.Function (($))
 import safe Data.Functor (Functor, fmap)
 import safe Data.Int (Int)
-import safe Data.Traversable (Traversable, sequenceA, traverse)
+import safe Data.Traversable (Traversable)
+import safe qualified Data.Traversable as T
 import safe Data.Void (Void)
 import safe Prelude (undefined)
 
@@ -130,14 +131,14 @@ labelSemiDual ''Foldable ''Functor
 makeDualClass
   ''Traversable
   "Distributive"
-  [ ('traverse, "cotraverse"),
-    ('sequenceA, "distribute")
+  [ ('T.traverse, "cotraverse"),
+    ('T.sequenceA, "distribute")
   ]
 #endif
 
 -- TODO: Doesn’t really belong here, but is the dual to `collect`.
 consume :: (Traversable g, Applicative f) => (g b -> a) -> g (f b) -> f a
-consume f = fmap f . sequenceA
+consume f = fmap f . T.sequenceA
 
 -- labelSemiDual 'return 'extract
 

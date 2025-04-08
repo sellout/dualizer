@@ -3,8 +3,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE Unsafe #-}
--- FIXME: remove these
-{-# OPTIONS_GHC -Wwarn=incomplete-patterns #-}
 
 -- | Operations to connect dual constructions.
 module Categorical.Dual
@@ -51,88 +49,16 @@ import safe Data.String (String)
 import safe Data.Traversable (sequenceA, traverse)
 import safe Data.Tuple (swap, uncurry)
 import safe Data.Void (Void)
+import safe qualified Language.Haskell.TH as TH
 import safe Language.Haskell.TH.Syntax
   ( Body (GuardedB, NormalB),
     Clause (Clause),
     Con (ForallC, GadtC, InfixC, NormalC, RecC, RecGadtC),
-    Dec
-      ( ClassD,
-        ClosedTypeFamilyD,
-        DataD,
-        DataFamilyD,
-        FunD,
-        NewtypeD,
-        OpenTypeFamilyD,
-        SigD,
-        TySynD,
-        ValD
-      ),
-    Exp
-      ( AppE,
-        ArithSeqE,
-        CaseE,
-        CompE,
-        ConE,
-        CondE,
-        DoE,
-        InfixE,
-        LamCaseE,
-        LamE,
-        LetE,
-        ListE,
-        LitE,
-        MultiIfE,
-        ParensE,
-        RecConE,
-        RecUpdE,
-        SigE,
-        StaticE,
-        TupE,
-        UInfixE,
-        UnboundVarE,
-        UnboxedTupE,
-        VarE
-      ),
     Guard (NormalG, PatG),
-    Info
-      ( ClassI,
-        ClassOpI,
-        DataConI,
-        FamilyI,
-        PrimTyConI,
-        TyConI,
-        TyVarI,
-        VarI
-      ),
     Match (Match),
     Name,
-    Pat (LitP, TupP, VarP),
     Q,
-    Stmt (BindS, LetS, NoBindS, ParS),
     TySynEqn (TySynEqn),
-    Type
-      ( AppT,
-        ArrowT,
-        ConT,
-        ConstraintT,
-        EqualityT,
-        ForallT,
-        InfixT,
-        ListT,
-        LitT,
-        ParensT,
-        PromotedConsT,
-        PromotedNilT,
-        PromotedT,
-        PromotedTupleT,
-        SigT,
-        StarT,
-        TupleT,
-        UInfixT,
-        UnboxedTupleT,
-        VarT,
-        WildCardT
-      ),
     TypeFamilyHead (TypeFamilyHead),
     getQ,
     liftData,
@@ -145,8 +71,8 @@ import safe Text.Show (Show, show)
 import safe Prelude (undefined)
 
 data DualMappings = DualMappings
-  { _dualTypes :: Map Name Type,
-    _dualValues :: Map Name Exp
+  { _dualTypes :: Map Name TH.Type,
+    _dualValues :: Map Name TH.Exp
   }
   deriving (Data, Eq)
 
@@ -166,11 +92,11 @@ instance Monoid DualMappings where
 emptyDuals :: Q DualMappings
 emptyDuals = pure $ DualMappings Map.empty Map.empty
 
-reifyDuals :: DualMappings -> Q Exp
+reifyDuals :: DualMappings -> Q TH.Exp
 reifyDuals duals =
   [e|maybe $(liftData duals) ($(liftData duals) <>) <$> getQ|]
 
-shareDuals :: DualMappings -> Q Exp
+shareDuals :: DualMappings -> Q TH.Exp
 shareDuals duals =
   [e|pure [] <* (putQ . maybe $(liftData duals) ($(liftData duals) <>) =<< getQ)|]
 
@@ -182,39 +108,41 @@ andMaybe f g = \case
   Only a -> f a
   Indeed a b -> g a b
 
-fromName :: Name -> Q (Type `AndMaybe` Exp)
-fromName =
-  ( \case
-      ClassI (ClassD _ n _ _ _) _ -> pure . Only $ ConT n
-      ClassI d _ -> fail $ "unknown dec to extract name from: " ++ show d
-      ClassOpI n t _ -> pure . Indeed t $ VarE n
-      TyConI (DataD _ n _ _ _ _) -> pure . Only $ ConT n
-      TyConI (TySynD n _ _) -> pure . Only $ ConT n
-      TyConI (NewtypeD _ n _ _ _ _) -> pure . Only $ ConT n
-      TyConI d -> fail $ "unknown dec to extract name from: " ++ show d
-      FamilyI d _ -> fail $ "not yet getting type families – " ++ show d -- FIXME
-      PrimTyConI n _ _ -> pure . Only $ ConT n
-      DataConI n t _ -> pure . Indeed t $ ConE n
-      -- PatSynI _ _ -> fail "pattern synonym is not a type"
-      VarI n t _ -> pure . Indeed t $ VarE n
-      TyVarI _ t -> pure $ Only t
-  )
-    <=< reify
+fromInfo :: TH.Info -> Q (TH.Type `AndMaybe` TH.Exp)
+fromInfo = \case
+  TH.ClassI (TH.ClassD _ n _ _ _) _ -> pure . Only $ TH.ConT n
+  TH.ClassI d _ -> fail $ "unknown dec to extract name from: " ++ show d
+  TH.ClassOpI n t _ -> pure . Indeed t $ TH.VarE n
+  TH.TyConI (TH.DataD _ n _ _ _ _) -> pure . Only $ TH.ConT n
+  TH.TyConI (TH.TySynD n _ _) -> pure . Only $ TH.ConT n
+  TH.TyConI (TH.NewtypeD _ n _ _ _ _) -> pure . Only $ TH.ConT n
+  TH.TyConI d -> fail $ "unknown dec to extract name from: " ++ show d
+  TH.FamilyI d _ -> fail $ "not yet getting type families – " ++ show d -- FIXME
+  TH.PrimTyConI n _ _ -> pure . Only $ TH.ConT n
+  TH.DataConI n t _ -> pure . Indeed t $ TH.ConE n
+  TH.VarI n t _ -> pure . Indeed t $ TH.VarE n
+  TH.TyVarI _ t -> pure $ Only t
+#if MIN_VERSION_template_haskell(2, 16, 0)
+  TH.PatSynI _ _ -> fail "pattern synonym is not a type"
+#endif
 
-typeFromName :: Name -> Q Type
+fromName :: Name -> Q (TH.Type `AndMaybe` TH.Exp)
+fromName = fromInfo <=< reify
+
+typeFromName :: Name -> Q TH.Type
 typeFromName = fmap (andMaybe id const) . fromName
 
-expFromName :: Name -> Q Exp
+expFromName :: Name -> Q TH.Exp
 expFromName =
   andMaybe (\t -> fail $ show t ++ " is not a value") (\_ e -> pure e)
     <=< fromName
 
--- | Returns a Type that is the dual of the named type.
-dualTypeName :: Map Name Type -> Name -> ExceptT Type Q Type
+-- | Returns a `TH.Type` that is the dual of the named type.
+dualTypeName :: Map Name TH.Type -> Name -> ExceptT TH.Type Q TH.Type
 dualTypeName db name =
   maybe (dualType' db <=< lift $ typeFromName name) pure $ Map.lookup name db
 
-dualExpName :: DualMappings -> Name -> ExceptT (Either Type Exp) Q Exp
+dualExpName :: DualMappings -> Name -> ExceptT (Either TH.Type TH.Exp) Q TH.Exp
 dualExpName db name =
   maybe (dualExp' db <=< lift $ expFromName name) pure $
     Map.lookup name (_dualValues db)
@@ -223,41 +151,56 @@ retrieveDuals :: Q DualMappings
 retrieveDuals = maybe (fail "no duals imported") pure =<< getQ
 
 -- FIXME: This can get into an infinite loop in the case of missing duals.
-dualType' :: Map Name Type -> Type -> ExceptT Type Q Type
+dualType' :: Map Name TH.Type -> TH.Type -> ExceptT TH.Type Q TH.Type
 dualType' db = \case
-  ForallT vs c t ->
-    ForallT vs <$> traverse (dualType' db) c <*> dualType' db t
-  AppT (AppT ArrowT t) inner@(AppT (AppT ArrowT _) _) -> do
+  TH.ForallT vs c t ->
+    TH.ForallT vs <$> traverse (dualType' db) c <*> dualType' db t
+  TH.AppT (TH.AppT TH.ArrowT t) inner@(TH.AppT (TH.AppT TH.ArrowT _) _) -> do
     t' <- dualType' db t
-    AppT (AppT ArrowT t') <$> dualType' db inner
-  AppT (AppT ArrowT t) t' -> AppT <$> (AppT ArrowT <$> dualType' db t') <*> dualType' db t
-  AppT t t' -> AppT <$> dualType' db t <*> dualType' db t'
-  SigT t k -> flip SigT k <$> (dualType' db t)
-  VarT n -> pure $ VarT n
-  ConT n -> dualTypeName db n
-  PromotedT n -> pure $ PromotedT n
-  InfixT _t n _t' -> dualTypeName db n -- t t'
-  UInfixT _t n _t' -> dualTypeName db n -- t t'
-  (ParensT t) -> pure $ ParensT t
-  (TupleT 0) -> pure $ ConT ''Void
-  (TupleT 1) -> pure $ TupleT 1
-  (TupleT 2) -> pure $ ConT ''Either
-  f@(TupleT _) -> throwE f
-  f@(UnboxedTupleT _i) -> throwE f -- pure $ UnboxedSumT i
-  -- UnboxedSumT a        -> pure $ UnboxedTupleT a
-  ArrowT -> pure ArrowT
-  EqualityT -> pure EqualityT
-  ListT -> pure ListT
-  PromotedTupleT 0 -> pure $ ConT ''Void
-  PromotedTupleT 1 -> pure $ PromotedTupleT 1
-  PromotedTupleT 2 -> pure $ ConT ''Either
-  f@(PromotedTupleT _) -> throwE f
-  PromotedNilT -> pure PromotedNilT
-  PromotedConsT -> pure PromotedConsT
-  StarT -> pure StarT
-  ConstraintT -> pure ConstraintT
-  LitT l -> pure $ LitT l
-  WildCardT -> pure WildCardT
+    TH.AppT (TH.AppT TH.ArrowT t') <$> dualType' db inner
+  TH.AppT (TH.AppT TH.ArrowT t) t' ->
+    TH.AppT <$> (TH.AppT TH.ArrowT <$> dualType' db t') <*> dualType' db t
+  TH.AppT t t' -> TH.AppT <$> dualType' db t <*> dualType' db t'
+  TH.SigT t k -> flip TH.SigT k <$> (dualType' db t)
+  TH.VarT n -> pure $ TH.VarT n
+  TH.ConT n -> dualTypeName db n
+  TH.PromotedT n -> pure $ TH.PromotedT n
+  TH.InfixT _t n _t' -> dualTypeName db n -- t t'
+  TH.UInfixT _t n _t' -> dualTypeName db n -- t t'
+  TH.ParensT t -> pure $ TH.ParensT t
+  TH.TupleT 0 -> pure $ TH.ConT ''Void
+  TH.TupleT 1 -> pure $ TH.TupleT 1
+  TH.TupleT 2 -> pure $ TH.ConT ''Either
+  f@(TH.TupleT _) -> throwE f
+  TH.ArrowT -> pure TH.ArrowT
+  TH.EqualityT -> pure TH.EqualityT
+  TH.ListT -> pure TH.ListT
+  TH.PromotedTupleT 0 -> pure $ TH.ConT ''Void
+  TH.PromotedTupleT 1 -> pure $ TH.PromotedTupleT 1
+  TH.PromotedTupleT 2 -> pure $ TH.ConT ''Either
+  f@(TH.PromotedTupleT _) -> throwE f
+  TH.PromotedNilT -> pure TH.PromotedNilT
+  TH.PromotedConsT -> pure TH.PromotedConsT
+  TH.StarT -> pure TH.StarT
+  TH.ConstraintT -> pure TH.ConstraintT
+  TH.LitT l -> pure $ TH.LitT l
+  TH.WildCardT -> pure TH.WildCardT
+#if MIN_VERSION_template_haskell(2, 19, 0)
+  TH.PromotedInfixT _t n _t' -> dualTypeName db n -- t t'
+  TH.PromotedUInfixT _t n _t' -> dualTypeName db n -- t t'
+#endif
+#if MIN_VERSION_template_haskell(2, 17, 0)
+  TH.MulArrowT -> pure TH.MulArrowT
+#endif
+#if MIN_VERSION_template_haskell(2, 16, 0)
+  TH.ForallVisT vs t -> TH.ForallVisT vs <$> dualType' db t
+  TH.AppKindT t k -> TH.AppKindT <$> dualType' db t <*> pure k
+  TH.UnboxedSumT a -> pure $ TH.UnboxedTupleT a
+  TH.UnboxedTupleT i -> pure $ TH.UnboxedSumT i
+  TH.ImplicitParamT n t -> TH.ImplicitParamT n <$> dualType' db t
+#else
+  f@(TH.UnboxedTupleT _) -> throwE f
+#endif
 
 exceptT :: (Monad m) => (t1 -> m c) -> (t2 -> m c) -> ExceptT t1 m t2 -> m c
 exceptT f g =
@@ -268,115 +211,148 @@ exceptT f g =
     <=< runExceptT
 
 -- | Returns a type that is the dual of the input type.
-dualType :: Type -> Q Type
+dualType :: TH.Type -> Q TH.Type
 dualType type' = do
   duals <- _dualTypes <$> retrieveDuals
   exceptT (\t -> fail $ "no dual for type " ++ show t) pure $
     dualType' duals type'
 
-dualGuard' :: DualMappings -> Guard -> ExceptT (Either Type Exp) Q Guard
+dualGuard' :: DualMappings -> Guard -> ExceptT (Either TH.Type TH.Exp) Q Guard
 dualGuard' db = \case
   NormalG e -> NormalG <$> dualExp' db e
   PatG ss -> PatG <$> traverse (dualStmt' db) ss
 
-dualDec' :: DualMappings -> Dec -> ExceptT (Either Type Exp) Q Dec
+dualDec' :: DualMappings -> TH.Dec -> ExceptT (Either TH.Type TH.Exp) Q TH.Dec
 dualDec' _db = pure
 
-dualPat' :: DualMappings -> Pat -> ExceptT (Either Type Exp) Q Pat
+dualPat' :: DualMappings -> TH.Pat -> ExceptT (Either TH.Type TH.Exp) Q TH.Pat
 dualPat' db = \case
-  LitP l -> pure $ LitP l
-  VarP n -> pure $ VarP n
-  TupP ps -> TupP <$> traverse (dualPat' db) ps -- FIXME: should also Either?
-  -- UnboxedTupP [Pat]
-  -- UnboxedSumP Pat SumAlt SumArity
-  x -> lift . fail $ "unhandled pattern " ++ show x
+  TH.LitP l -> pure $ TH.LitP l
+  TH.VarP n -> pure $ TH.VarP n
+  TH.TupP ps -> TH.TupP <$> traverse (dualPat' db) ps -- FIXME: should also Either?
+  p@(TH.InfixP _p _n _p') -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.UInfixP _p _n _p') -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.ParensP _p) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.TildeP _p) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.BangP _p) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.AsP _n _p) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.WildP) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.RecP _n _fps) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.ListP _ps) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.SigP _p _t) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.ViewP _e _p) -> lift . fail $ "unhandled pattern " ++ show p
+#if MIN_VERSION_template_haskell(2, 22, 0)
+  p@(TH.TypeP _t) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.InvisP _t) -> lift . fail $ "unhandled pattern " ++ show p
+#endif
+#if MIN_VERSION_template_haskell(2, 18, 0)
+  p@(TH.ConP _n _ts _ps) -> lift . fail $ "unhandled pattern " ++ show p
+#else
+  p@(TH.ConP _n _ps) -> lift . fail $ "unhandled pattern " ++ show p
+#endif
+#if MIN_VERSION_template_haskell(2, 16, 0)
+  p@(TH.UnboxedTupP _ps) -> lift . fail $ "unhandled pattern " ++ show p
+  p@(TH.UnboxedSumP _p _a _a') -> lift . fail $ "unhandled pattern " ++ show p
+#endif
 
--- ConP Name [Pat]
--- InfixP Pat Name Pat
--- UInfixP Pat Name Pat
--- ParensP Pat
--- TildeP Pat
--- BangP Pat
--- AsP Name Pat
--- WildP
--- RecP Name [FieldPat]
--- ListP [Pat]
--- SigP Pat Type
--- ViewP Exp Pat
-
-dualBody' :: DualMappings -> Body -> ExceptT (Either Type Exp) Q Body
+dualBody' :: DualMappings -> Body -> ExceptT (Either TH.Type TH.Exp) Q Body
 dualBody' db = \case
   GuardedB xs ->
     GuardedB <$> traverse (bisequence . (dualGuard' db *** dualExp' db)) xs
   NormalB e -> NormalB <$> dualExp' db e
 
-dualMatch' :: DualMappings -> Match -> ExceptT (Either Type Exp) Q Match
+dualMatch' :: DualMappings -> Match -> ExceptT (Either TH.Type TH.Exp) Q Match
 dualMatch' db (Match p b ds) =
   Match <$> dualPat' db p <*> dualBody' db b <*> traverse (dualDec' db) ds
 
-{- ORMOLU_DISABLE -}
-{- because it can’t handle CPP within a declaration -}
-dualExp' :: DualMappings -> Exp -> ExceptT (Either Type Exp) Q Exp
+dualExp' :: DualMappings -> TH.Exp -> ExceptT (Either TH.Type TH.Exp) Q TH.Exp
 dualExp' db = \case
-  v@(VarE n) ->
+  v@(TH.VarE n) ->
     ExceptT . recover (pure $ pure v) . runExceptT $ dualExpName db n
-  ConE n -> dualExpName db n
-  l@(LitE _) -> pure l
-  AppE a b -> AppE <$> dualExp' db a <*> dualExp' db b
-  -- AppTypeE e t -> AppTypeE <$> dualExp' db e <*> dualType' (_dualTypes db) t
-  InfixE a o b ->
-    InfixE
-    <$> traverse (dualExp' db) a
-    <*> dualExp' db o
-    <*> traverse (dualExp' db) b
-  UInfixE a o b -> UInfixE <$> dualExp' db a <*> dualExp' db o <*> dualExp' db b
-  ParensE e -> ParensE <$> dualExp' db e
-  LamE p e -> LamE p <$> dualExp' db e
-  LamCaseE matches -> LamCaseE <$> traverse (dualMatch' db) matches
-#if MIN_VERSION_template_haskell(2, 16, 0)
-  TupE es -> TupE <$> traverse (traverse $ dualExp' db) es -- FIXME: Doesn’t seem right.
-  UnboxedTupE es -> UnboxedTupE <$> traverse (traverse $ dualExp' db) es
-#else
-  TupE es -> TupE <$> traverse (dualExp' db) es -- FIXME: Doesn’t seem right.
-  UnboxedTupE es -> UnboxedTupE <$> traverse (dualExp' db) es
+  TH.ConE n -> dualExpName db n
+  l@(TH.LitE _) -> pure l
+  TH.AppE a b -> TH.AppE <$> dualExp' db a <*> dualExp' db b
+  TH.InfixE a o b ->
+    TH.InfixE
+      <$> traverse (dualExp' db) a
+      <*> dualExp' db o
+      <*> traverse (dualExp' db) b
+  TH.UInfixE a o b ->
+    TH.UInfixE <$> dualExp' db a <*> dualExp' db o <*> dualExp' db b
+  TH.ParensE e -> TH.ParensE <$> dualExp' db e
+  TH.LamE p e -> TH.LamE p <$> dualExp' db e
+  TH.LamCaseE matches -> TH.LamCaseE <$> traverse (dualMatch' db) matches
+  TH.CondE t c a ->
+    TH.CondE <$> dualExp' db t <*> dualExp' db c <*> dualExp' db a
+  TH.MultiIfE cases ->
+    TH.MultiIfE
+      <$> traverse (bisequence . (dualGuard' db *** dualExp' db)) cases
+  TH.LetE ds e -> TH.LetE <$> traverse (dualDec' db) ds <*> dualExp' db e
+  TH.CaseE e ms -> TH.CaseE <$> dualExp' db e <*> traverse (dualMatch' db) ms
+  TH.CompE ss -> TH.CompE <$> traverse (dualStmt' db) ss
+  TH.ArithSeqE r -> pure $ TH.ArithSeqE r
+  TH.ListE es -> TH.ListE <$> traverse (dualExp' db) es
+  TH.SigE e t ->
+    TH.SigE <$> dualExp' db e <*> withExceptT Left (dualType' (_dualTypes db) t)
+  e@(TH.RecConE _ _) -> throwE $ Right e
+  e@(TH.RecUpdE _ _) -> throwE $ Right e
+  TH.StaticE e -> TH.StaticE <$> dualExp' db e
+  TH.UnboundVarE n -> pure $ TH.UnboundVarE n
+#if MIN_VERSION_template_haskell(2, 22, 0)
+  e@(TH.TypeE _) -> throwE $ Right e
 #endif
-  -- UnboxedSumE e alt ar ->
-  --   UnboxedTupE <$> traverse (dualExp' db) es <*> pure alt <*> pure ar
-  CondE t c a -> CondE <$> dualExp' db t <*> dualExp' db c <*> dualExp' db a
-  MultiIfE cases ->
-    MultiIfE <$> traverse (bisequence . (dualGuard' db *** dualExp' db)) cases
-  LetE ds e -> LetE <$> traverse (dualDec' db) ds <*> dualExp' db e
-  CaseE e ms -> CaseE <$> dualExp' db e <*> traverse (dualMatch' db) ms
+#if MIN_VERSION_template_haskell(2, 21, 0)
+  e@(TH.TypedBracketE _) -> throwE $ Right e
+  e@(TH.TypedSpliceE _) -> throwE $ Right e
+#endif
+#if MIN_VERSION_template_haskell(2, 19, 0)
+  TH.LamCasesE cs -> TH.LamCasesE <$> traverse (dualClause' db) cs
+#endif
+#if MIN_VERSION_template_haskell(2, 18, 0)
+  TH.GetFieldE e f -> TH.GetFieldE <$> dualExp' db e <*> pure f
+  TH.ProjectionE fs -> pure $ TH.ProjectionE fs
+#endif
 #if MIN_VERSION_template_haskell(2, 17, 0)
-  DoE m ss -> DoE m <$> traverse (dualStmt' db) ss
+  TH.DoE m ss -> TH.DoE m <$> traverse (dualStmt' db) ss
+  TH.MDoE m ss -> TH.MDoE m <$> traverse (dualStmt' db) ss
 #else
-  DoE ss -> DoE <$> traverse (dualStmt' db) ss
+  TH.DoE ss -> TH.DoE <$> traverse (dualStmt' db) ss
+  TH.MDoE ss -> TH.MDoE <$> traverse (dualStmt' db) ss
 #endif
-  CompE ss -> CompE <$> traverse (dualStmt' db) ss
-  ArithSeqE r -> pure $ ArithSeqE r
-  ListE es -> ListE <$> traverse (dualExp' db) es
-  SigE e t -> SigE <$> dualExp' db e <*> withExceptT Left (dualType' (_dualTypes db) t)
-  e@(RecConE _ _) -> throwE $ Right e
-  e@(RecUpdE _ _) -> throwE $ Right e
-  StaticE e -> StaticE <$> dualExp' db e
-  UnboundVarE n -> pure $ UnboundVarE n
-{- ORMOLU_ENABLE -}
+#if MIN_VERSION_template_haskell(2, 16, 0)
+  TH.TupE es -> TH.TupE <$> traverse (traverse $ dualExp' db) es -- FIXME: Doesn’t seem right.
+  TH.UnboxedTupE es -> TH.UnboxedTupE <$> traverse (traverse $ dualExp' db) es
+  TH.AppTypeE e t ->
+    TH.AppTypeE
+      <$> dualExp' db e
+      <*> withExceptT Left (dualType' (_dualTypes db) t)
+  TH.UnboxedSumE e alt ar ->
+    TH.UnboxedSumE <$> dualExp' db e <*> pure alt <*> pure ar
+  TH.LabelE l -> pure $ TH.LabelE l
+  TH.ImplicitParamVarE n -> pure $ TH.ImplicitParamVarE n
+#else
+  TH.TupE es -> TH.TupE <$> traverse (dualExp' db) es -- FIXME: Doesn’t seem right.
+  e@(TH.UnboxedTupE _) -> throwE $ pure e
+#endif
 
-dualClause' :: DualMappings -> Clause -> ExceptT (Either Type Exp) Q Clause
+dualClause' :: DualMappings -> Clause -> ExceptT (Either TH.Type TH.Exp) Q Clause
 dualClause' db (Clause ps b ds) =
   Clause
     <$> traverse (dualPat' db) ps
     <*> dualBody' db b
     <*> traverse (dualDec' db) ds
 
-dualStmt' :: DualMappings -> Stmt -> ExceptT (Either Type Exp) Q Stmt
+dualStmt' :: DualMappings -> TH.Stmt -> ExceptT (Either TH.Type TH.Exp) Q TH.Stmt
 dualStmt' db = \case
-  BindS p e -> BindS <$> dualPat' db p <*> dualExp' db e
-  LetS ds -> LetS <$> traverse (dualDec' db) ds
-  NoBindS e -> NoBindS <$> dualExp' db e
-  ParS sss -> ParS <$> traverse (traverse (dualStmt' db)) sss
+  TH.BindS p e -> TH.BindS <$> dualPat' db p <*> dualExp' db e
+  TH.LetS ds -> TH.LetS <$> traverse (dualDec' db) ds
+  TH.NoBindS e -> TH.NoBindS <$> dualExp' db e
+  TH.ParS sss -> TH.ParS <$> traverse (traverse (dualStmt' db)) sss
+#if MIN_VERSION_template_haskell(2, 16, 0)
+  TH.RecS ss -> TH.RecS <$> traverse (dualStmt' db) ss
+#endif
 
-handleMissingDual :: ExceptT (Either Type Exp) Q a -> Q a
+handleMissingDual :: ExceptT (Either TH.Type TH.Exp) Q a -> Q a
 handleMissingDual =
   exceptT
     ( fail
@@ -387,13 +363,13 @@ handleMissingDual =
 
 -- | Convert an expression to its dual (i.e., an implementation for the dual
 --   of the input expression’s type)
-dualExp :: Exp -> Q Exp
+dualExp :: TH.Exp -> Q TH.Exp
 dualExp exp = do
   duals <- retrieveDuals
   handleMissingDual $ dualExp' duals exp
 
 -- | Indicates that some name represents the dual of itself (e.g., `Functor`).
-labelSelfDual :: Name -> Q [Dec]
+labelSelfDual :: Name -> Q [TH.Dec]
 labelSelfDual name = do
   duals <- retrieveDuals
   a <- fromName name
@@ -407,7 +383,7 @@ labelSelfDual name = do
 -- | This provides a mapping one way, but not the other. Useful for aliased
 --   functions (`return`) and overconstrained versions (e.g., mapping
 --  `traverse ↔ distribute` but also `mapM → distribute`).
-labelSemiDual :: Name -> Name -> Q [Dec]
+labelSemiDual :: Name -> Name -> Q [TH.Dec]
 labelSemiDual name coname = do
   duals <- retrieveDuals
   a <- fromName name
@@ -415,81 +391,103 @@ labelSemiDual name coname = do
   case (a, b) of
     (Only _, Only t) -> putQ $ duals & dualTypes %~ Map.insert name t
     (Indeed _ _, Indeed _ e) -> putQ $ duals & dualValues %~ Map.insert name e
-    (_, _) -> fail $ show name ++ " and " ++ show coname ++ "are not in the same namespace: " ++ show a ++ " " ++ show b
+    (_, _) ->
+      fail $
+        show name
+          ++ " and "
+          ++ show coname
+          ++ "are not in the same namespace: "
+          ++ show a
+          ++ " "
+          ++ show b
   pure []
 
-labelDualDataT :: Name -> Name -> Type -> Type -> Q [Dec]
+labelDualDataT :: Name -> Name -> TH.Type -> TH.Type -> Q [TH.Dec]
 labelDualDataT name coname type' cotype' = do
   duals <- retrieveDuals
   pure [] <* (putQ $ duals & dualTypes %~ (Map.insert coname type' . Map.insert name cotype'))
 
-addDualExp :: Name -> Name -> Exp -> Exp -> Q DualMappings
+addDualExp :: Name -> Name -> TH.Exp -> TH.Exp -> Q DualMappings
 addDualExp name coname exp' coexp' = do
   duals <- retrieveDuals
   pure $ duals & dualValues %~ (Map.insert coname exp' . Map.insert name coexp')
 
-labelDualExpT :: Name -> Name -> Exp -> Exp -> Q [Dec]
+labelDualExpT :: Name -> Name -> TH.Exp -> TH.Exp -> Q [TH.Dec]
 labelDualExpT name coname exp' coexp' = do
   duals <- retrieveDuals
   pure [] <* (putQ $ duals & dualValues %~ (Map.insert coname exp' . Map.insert name coexp'))
 
 -- | Indicate that two names are duals of each other.
-labelDual :: Name -> Name -> Q [Dec]
+labelDual :: Name -> Name -> Q [TH.Dec]
 labelDual name coname = do
   a <- fromName name
   b <- fromName coname
   case (a, b) of
     (Only a', Only b') -> labelDualDataT name coname a' b'
     (Indeed _ a', Indeed _ b') -> labelDualExpT name coname a' b'
-    (_, _) -> fail $ show name ++ " and " ++ show coname ++ "are not in the same namespace: " ++ show a ++ " " ++ show b
+    (_, _) ->
+      fail $
+        show name
+          ++ " and "
+          ++ show coname
+          ++ "are not in the same namespace: "
+          ++ show a
+          ++ " "
+          ++ show b
 
-stripForall :: Type -> Type
-stripForall (ForallT _ _ t) = t
+stripForall :: TH.Type -> TH.Type
+stripForall (TH.ForallT _ _ t) = t
 stripForall t = t
 
 -- | Given a class, creates a new class that represents its dual, with the list
 --   containing name mappings of methods to their duals.
-makeDualClass :: Name -> String -> [(Name, String)] -> Q [Dec]
+makeDualClass :: Name -> String -> [(Name, String)] -> Q [TH.Dec]
 makeDualClass name co methods = do
   let coname = mkName co
   info <- reify name
   type' <- typeFromName name
   case info of
-    ClassI (ClassD ctx _ tVars fds _) _ -> do
+    TH.ClassI (TH.ClassD ctx _ tVars fds _) _ -> do
       ctx' <- traverse dualType ctx
-      meths' <- traverse (sequenceA . (mkName *** ((dualType . stripForall) <=< typeFromName)) . swap) methods
-      (ClassD ctx' coname tVars fds (fmap (uncurry SigD) meths') :)
-        <$> labelDualDataT name coname type' (ConT coname)
+      meths' <-
+        traverse
+          ( sequenceA
+              . (mkName *** ((dualType . stripForall) <=< typeFromName))
+              . swap
+          )
+          methods
+      (TH.ClassD ctx' coname tVars fds (fmap (uncurry TH.SigD) meths') :)
+        <$> labelDualDataT name coname type' (TH.ConT coname)
     _ -> fail "not a type class"
 
-makeDualExp :: String -> Q Type -> Q Exp -> String -> Q [Dec]
+makeDualExp :: String -> Q TH.Type -> Q TH.Exp -> String -> Q [TH.Dec]
 makeDualExp str type' exp' costr = do
   let name = mkName str
       coname = mkName costr
 
   sequenceA
-    [ SigD name <$> type',
-      ValD (VarP name) <$> (NormalB <$> exp') <*> pure [],
-      SigD coname <$> (dualType =<< type'),
-      ValD (VarP coname) <$> (NormalB <$> (dualExp =<< exp')) <*> pure []
+    [ TH.SigD name <$> type',
+      TH.ValD (TH.VarP name) <$> (NormalB <$> exp') <*> pure [],
+      TH.SigD coname <$> (dualType =<< type'),
+      TH.ValD (TH.VarP coname) <$> (NormalB <$> (dualExp =<< exp')) <*> pure []
     ]
 
 -- | Creates a value that can be referenced in other modules to load the duals
 --   defined in this module. Should be used at the bottom of any module that
 --   uses this module.
-exportDuals :: String -> Q [Dec]
+exportDuals :: String -> Q [TH.Dec]
 exportDuals name = do
   typ <- [t|Q DualMappings|]
   exp <- reifyDuals =<< retrieveDuals
   let name' = mkName name
   pure
-    [ SigD name' typ,
-      ValD (VarP name') (NormalB exp) []
+    [ TH.SigD name' typ,
+      TH.ValD (TH.VarP name') (NormalB exp) []
     ]
 
 -- | Imports duals from other modules via the var created by `exportDuals` in
 --   that other module.
-importDuals :: Q DualMappings -> Q [Dec]
+importDuals :: Q DualMappings -> Q [TH.Dec]
 importDuals duals = do
   oldDuals <- getQ
   newDuals <- duals
@@ -503,7 +501,7 @@ errorMultipleNewNames n =
 errorNoNewName :: Q a
 errorNoNewName = fail "declaration doesn’t introduce a new name"
 
-dualCon' :: Map Name Type -> Name -> Con -> ExceptT Type Q Con
+dualCon' :: Map Name TH.Type -> Name -> Con -> ExceptT TH.Type Q Con
 dualCon' db coname = \case
   NormalC _ bts -> NormalC coname <$> traverse (traverse $ dualType' db) bts
   -- TODO: Probably want to dualize field names, too.
@@ -518,7 +516,7 @@ dualCon' db coname = \case
   GadtC _ns _bts _t -> undefined -- how do we handle the multiple names here
   RecGadtC _ns _vbts _t -> undefined -- and here?
 
-dualTySynEqn' :: Map Name Type -> TySynEqn -> ExceptT Type Q TySynEqn
+dualTySynEqn' :: Map Name TH.Type -> TySynEqn -> ExceptT TH.Type Q TySynEqn
 #if MIN_VERSION_template_haskell(2, 15, 0)
 dualTySynEqn' db (TySynEqn bs t t') =
   TySynEqn bs <$> dualType' db t <*> dualType' db t'
@@ -527,53 +525,76 @@ dualTySynEqn' db (TySynEqn ts t) =
   TySynEqn <$> traverse (dualType' db) ts <*> dualType' db t
 #endif
 
-dualizeDec :: DualMappings -> Name -> Dec -> Q [Dec]
+dualizeDec :: DualMappings -> Name -> TH.Dec -> Q [TH.Dec]
 dualizeDec db coname d =
-  handleMissingDual $
-    (\c -> [d, c])
-      <$> case d of
-        FunD n cs -> do
-          newMap <- lift $ addDualExp n coname (VarE n) (VarE coname)
-          FunD coname <$> traverse (dualClause' newMap) cs
-        -- TODO: Handle other vals
-        ValD (VarP n) b ds -> do
-          newMap <- lift $ addDualExp n coname (VarE n) (VarE coname)
-          ValD (VarP coname)
-            <$> dualBody' newMap b
-            <*> traverse (dualDec' newMap) ds
-        DataD cx _n tvbs k [cn] dcs ->
-          withExceptT Left $
-            DataD
-              <$> traverse (dualType' (_dualTypes db)) cx
-              <*> pure coname
-              <*> pure tvbs
-              <*> pure k
-              <*> ((: []) <$> dualCon' (_dualTypes db) coname cn)
-              <*> pure dcs -- Should actually dualize this
-        DataD _ n _ _ _ _ -> lift $ errorMultipleNewNames n
-        NewtypeD cx _n tvbs k cn dcs ->
-          withExceptT Left $
-            NewtypeD
-              <$> traverse (dualType' (_dualTypes db)) cx
-              <*> pure coname
-              <*> pure tvbs
-              <*> pure k
-              <*> dualCon' (_dualTypes db) coname cn
-              <*> pure dcs -- Should actually dualize this
-        TySynD _ tvbs t ->
-          TySynD coname tvbs <$> withExceptT Left (dualType' (_dualTypes db) t)
-        SigD _ t -> SigD coname <$> withExceptT Left (dualType' (_dualTypes db) t)
-        DataFamilyD _ tvbs k -> pure $ DataFamilyD coname tvbs k
-        OpenTypeFamilyD (TypeFamilyHead _n tvbs frs ia) ->
-          pure . OpenTypeFamilyD $ TypeFamilyHead coname tvbs frs ia
-        ClosedTypeFamilyD (TypeFamilyHead _n tvbs frs ia) tses ->
-          ClosedTypeFamilyD (TypeFamilyHead coname tvbs frs ia)
-            <$> withExceptT Left (traverse (dualTySynEqn' $ _dualTypes db) tses)
-        _ -> lift $ errorNoNewName
+  handleMissingDual $ (d :) . pure <$> dualizeDec' db coname d
+
+dualizeDec' ::
+  DualMappings -> Name -> TH.Dec -> ExceptT (Either TH.Type TH.Exp) Q TH.Dec
+dualizeDec' db coname = \case
+  TH.FunD n cs -> do
+    newMap <- lift $ addDualExp n coname (TH.VarE n) (TH.VarE coname)
+    TH.FunD coname <$> traverse (dualClause' newMap) cs
+  -- TODO: Handle other vals
+  TH.ValD (TH.VarP n) b ds -> do
+    newMap <- lift $ addDualExp n coname (TH.VarE n) (TH.VarE coname)
+    TH.ValD (TH.VarP coname)
+      <$> dualBody' newMap b
+      <*> traverse (dualDec' newMap) ds
+  TH.ValD {} -> lift $ errorNoNewName
+  TH.DataD cx _n tvbs k [cn] dcs ->
+    withExceptT Left $
+      TH.DataD
+        <$> traverse (dualType' (_dualTypes db)) cx
+        <*> pure coname
+        <*> pure tvbs
+        <*> pure k
+        <*> ((: []) <$> dualCon' (_dualTypes db) coname cn)
+        <*> pure dcs -- Should actually dualize this
+  TH.DataD _ n _ _ _ _ -> lift $ errorMultipleNewNames n
+  TH.NewtypeD cx _n tvbs k cn dcs ->
+    withExceptT Left $
+      TH.NewtypeD
+        <$> traverse (dualType' (_dualTypes db)) cx
+        <*> pure coname
+        <*> pure tvbs
+        <*> pure k
+        <*> dualCon' (_dualTypes db) coname cn
+        <*> pure dcs -- Should actually dualize this
+  TH.TySynD _ tvbs t ->
+    TH.TySynD coname tvbs <$> withExceptT Left (dualType' (_dualTypes db) t)
+  TH.ClassD {} -> lift $ errorNoNewName
+  TH.InstanceD {} -> lift $ errorNoNewName
+  TH.SigD _ t -> TH.SigD coname <$> withExceptT Left (dualType' (_dualTypes db) t)
+  TH.KiSigD {} -> lift $ errorNoNewName
+  TH.ForeignD {} -> lift $ errorNoNewName
+  TH.InfixD {} -> lift $ errorNoNewName
+  TH.PragmaD {} -> lift $ errorNoNewName
+  TH.DataFamilyD _ tvbs k -> pure $ TH.DataFamilyD coname tvbs k
+  TH.DataInstD {} -> lift $ errorNoNewName
+  TH.NewtypeInstD {} -> lift $ errorNoNewName
+  TH.TySynInstD {} -> lift $ errorNoNewName
+  TH.OpenTypeFamilyD (TypeFamilyHead _n tvbs frs ia) ->
+    pure . TH.OpenTypeFamilyD $ TypeFamilyHead coname tvbs frs ia
+  TH.ClosedTypeFamilyD (TypeFamilyHead _n tvbs frs ia) tses ->
+    TH.ClosedTypeFamilyD (TypeFamilyHead coname tvbs frs ia)
+      <$> withExceptT Left (traverse (dualTySynEqn' $ _dualTypes db) tses)
+  TH.RoleAnnotD {} -> lift $ errorNoNewName
+  TH.StandaloneDerivD {} -> lift $ errorNoNewName
+  TH.DefaultSigD {} -> lift $ errorNoNewName
+  TH.PatSynD {} -> lift $ errorNoNewName
+  TH.PatSynSigD {} -> lift $ errorNoNewName
+  TH.ImplicitParamBindD {} -> lift $ errorNoNewName
+#if MIN_VERSION_template_haskell(2, 20, 0)
+  TH.TypeDataD {} -> lift $ errorNoNewName
+#endif
+#if MIN_VERSION_template_haskell(2, 19, 0)
+  TH.DefaultD {} -> lift $ errorNoNewName
+#endif
 
 -- | Creates both the original declaration and its dual. Should only work for
 --   declarations that introduce exactly one top-level name.
-makeDualDec :: Q [Dec] -> String -> Q [Dec]
+makeDualDec :: Q [TH.Dec] -> String -> Q [TH.Dec]
 makeDualDec decs co = do
   let coname = mkName co
   db <- retrieveDuals
