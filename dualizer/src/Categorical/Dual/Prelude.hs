@@ -1,9 +1,58 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE Unsafe #-}
 
 -- | Dual mappings for types in the 'Prelude'.
-module Categorical.Dual.Prelude where
+module Categorical.Dual.Prelude
+  ( preludeDuals,
+  )
+where
 
 import Categorical.Dual
+  ( emptyDuals,
+    exportDuals,
+    importDuals,
+    labelDual,
+    labelSelfDual,
+  )
+import safe Data.Bool (Bool, not, (&&), (||))
+import safe Data.Char (Char)
+import safe Data.Either (Either (Left, Right))
+import safe Data.Eq (Eq, (/=), (==))
+import safe Data.Function (const, id)
+import safe Data.Functor (Functor, fmap, (<$), (<$>))
+import safe Data.Int (Int)
+import safe Data.List (map)
+import safe Data.Ord (Ord, Ordering, max, min, (<), (<=), (>), (>=))
+import safe Data.Ratio (Rational)
+import safe Data.String (String)
+import safe Data.Tuple (fst, snd)
+import safe Data.Word (Word)
+import safe System.IO
+  ( IO,
+    getChar,
+    getLine,
+    putChar,
+    putStrLn,
+    readFile,
+    writeFile,
+  )
+import safe Text.Read (Read, read)
+import safe Text.Show (Show, show)
+import safe Prelude
+  ( Bounded,
+    Double,
+    Enum,
+    Float,
+    Floating,
+    Fractional,
+    Integer,
+    Integral,
+    Num,
+    Real,
+    RealFrac,
+    maxBound,
+    minBound,
+  )
 
 importDuals emptyDuals
 
@@ -73,6 +122,7 @@ labelSelfDual '(<$>)
 
 labelSelfDual 'id
 labelSelfDual 'const
+
 -- labelSelfDual 'undefined
 
 labelSelfDual 'map

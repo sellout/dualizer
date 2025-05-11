@@ -1,0 +1,10 @@
+{
+  "project":
+    {
+      "description": "A library for defining duals automatically, as well as labeling duals in existing packages.",
+      "name": "dualizer",
+      "repo": "sellout/dualizer",
+      "summary": "Automatically generate dual constructions",
+    },
+  "type": { "name": "haskell" },
+}

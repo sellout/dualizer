@@ -1,0 +1,19 @@
+constraints:
+  -- This is only a transitive dependency, and only used before `Contravariant`
+  -- was added to `base` (GHC 8.10), but versions before 1.2.1 don’t enforce
+  -- `Safe`, and can cause compilation failures in our dependencies.
+  StateVar >= 1.2.1,
+  -- This is only a transitive dependency, but 0.5 doesn’t build in some cases.
+  distributive >= 0.5.2,
+
+flags:
+  -noisy-deprecations
+
+program-options
+  ghc-options:
+    -Werror
+
+tests: True
+
+packages:
+  ./dualizer/dualizer.cabal
