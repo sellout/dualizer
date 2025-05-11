@@ -74,7 +74,7 @@ data DualMappings = DualMappings
   { _dualTypes :: Map Name TH.Type,
     _dualValues :: Map Name TH.Exp
   }
-  deriving (Data, Eq)
+  deriving stock (Data, Eq)
 
 makeLenses ''DualMappings
 
@@ -102,7 +102,7 @@ shareDuals duals =
   [e|[] <$ (putQ . maybe $(liftData duals) ($(liftData duals) <>) =<< getQ)|]
 
 -- TODO: Move this somewhere better
-data AndMaybe a b = Only a | Indeed a b deriving (Eq, Show)
+data AndMaybe a b = Only a | Indeed a b deriving stock (Eq, Show)
 
 andMaybe :: (a -> c) -> (a -> b -> c) -> a `AndMaybe` b -> c
 andMaybe f g = \case
@@ -121,11 +121,9 @@ fromInfo = \case
   TH.FamilyI d _ -> fail $ "not yet getting type families – " <> show d -- FIXME
   TH.PrimTyConI n _ _ -> pure . Only $ TH.ConT n
   TH.DataConI n t _ -> pure . Indeed t $ TH.ConE n
+  TH.PatSynI _ _ -> fail "pattern synonym is not a type"
   TH.VarI n t _ -> pure . Indeed t $ TH.VarE n
   TH.TyVarI _ t -> pure $ Only t
-#if MIN_VERSION_template_haskell(2, 12, 0)
-  TH.PatSynI _ _ -> fail "pattern synonym is not a type"
-#endif
 
 fromName :: Name -> Q (TH.Type `AndMaybe` TH.Exp)
 fromName = fromInfo <=< reify
@@ -173,6 +171,7 @@ dualType' db = \case
   TH.TupleT 1 -> pure $ TH.TupleT 1
   TH.TupleT 2 -> pure $ TH.ConT ''Either
   f@(TH.TupleT _) -> throwE f
+  TH.UnboxedSumT a -> pure $ TH.UnboxedTupleT a
   TH.ArrowT -> pure TH.ArrowT
   TH.EqualityT -> pure TH.EqualityT
   TH.ListT -> pure TH.ListT
@@ -202,9 +201,6 @@ dualType' db = \case
 #if MIN_VERSION_template_haskell(2, 15, 0)
   TH.AppKindT t k -> TH.AppKindT <$> dualType' db t <*> pure k
   TH.ImplicitParamT n t -> TH.ImplicitParamT n <$> dualType' db t
-#endif
-#if MIN_VERSION_template_haskell(2, 12, 0)
-  TH.UnboxedSumT a -> pure $ TH.UnboxedTupleT a
 #endif
 
 exceptT :: (Monad m) => (t1 -> m c) -> (t2 -> m c) -> ExceptT t1 m t2 -> m c
@@ -236,6 +232,7 @@ dualPat' db = \case
   TH.VarP n -> pure $ TH.VarP n
   TH.TupP ps -> TH.TupP <$> traverse (dualPat' db) ps -- FIXME: should also Either?
   p@(TH.UnboxedTupP _ps) -> lift . fail $ "unhandled pattern " <> show p
+  p@(TH.UnboxedSumP _p _a _a') -> lift . fail $ "unhandled pattern " <> show p
   p@(TH.InfixP _p _n _p') -> lift . fail $ "unhandled pattern " <> show p
   p@(TH.UInfixP _p _n _p') -> lift . fail $ "unhandled pattern " <> show p
   p@(TH.ParensP _p) -> lift . fail $ "unhandled pattern " <> show p
@@ -256,9 +253,6 @@ dualPat' db = \case
 #else
   p@(TH.ConP _n _ps) -> lift . fail $ "unhandled pattern " <> show p
 #endif
-#if MIN_VERSION_template_haskell(2, 12, 0)
-  p@(TH.UnboxedSumP _p _a _a') -> lift . fail $ "unhandled pattern " <> show p
-#endif
 
 dualBody' :: DualMappings -> Body -> ExceptT (Either TH.Type TH.Exp) Q Body
 dualBody' db = \case
@@ -277,6 +271,10 @@ dualExp' db = \case
   TH.ConE n -> dualExpName db n
   l@(TH.LitE _) -> pure l
   TH.AppE a b -> TH.AppE <$> dualExp' db a <*> dualExp' db b
+  TH.AppTypeE e t ->
+    TH.AppTypeE
+      <$> dualExp' db e
+      <*> withExceptT Left (dualType' (_dualTypes db) t)
   TH.InfixE a o b ->
     TH.InfixE
       <$> traverse (dualExp' db) a
@@ -287,6 +285,8 @@ dualExp' db = \case
   TH.ParensE e -> TH.ParensE <$> dualExp' db e
   TH.LamE p e -> TH.LamE p <$> dualExp' db e
   TH.LamCaseE matches -> TH.LamCaseE <$> traverse (dualMatch' db) matches
+  TH.UnboxedSumE e alt ar ->
+    TH.UnboxedSumE <$> dualExp' db e <*> pure alt <*> pure ar
   TH.CondE t c a ->
     TH.CondE <$> dualExp' db t <*> dualExp' db c <*> dualExp' db a
   TH.MultiIfE cases ->
@@ -303,6 +303,7 @@ dualExp' db = \case
   e@(TH.RecUpdE _ _) -> throwE $ Right e
   TH.StaticE e -> TH.StaticE <$> dualExp' db e
   TH.UnboundVarE n -> pure $ TH.UnboundVarE n
+  TH.LabelE l -> pure $ TH.LabelE l
 #if MIN_VERSION_template_haskell(2, 22, 0)
   e@(TH.TypeE _) -> throwE $ Right e
 #endif
@@ -336,17 +337,6 @@ dualExp' db = \case
   TH.MDoE ss -> TH.MDoE <$> traverse (dualStmt' db) ss
 #endif
   TH.ImplicitParamVarE n -> pure $ TH.ImplicitParamVarE n
-#endif
-#if MIN_VERSION_template_haskell(2, 13, 0)
-  TH.LabelE l -> pure $ TH.LabelE l
-#endif
-#if MIN_VERSION_template_haskell(2, 12, 0)
-  TH.AppTypeE e t ->
-    TH.AppTypeE
-      <$> dualExp' db e
-      <*> withExceptT Left (dualType' (_dualTypes db) t)
-  TH.UnboxedSumE e alt ar ->
-    TH.UnboxedSumE <$> dualExp' db e <*> pure alt <*> pure ar
 #endif
 
 dualClause' :: DualMappings -> Clause -> ExceptT (Either TH.Type TH.Exp) Q Clause
@@ -594,6 +584,8 @@ dualizeDec' db coname = \case
   TH.RoleAnnotD {} -> lift errorNoNewName
   TH.StandaloneDerivD {} -> lift errorNoNewName
   TH.DefaultSigD {} -> lift errorNoNewName
+  TH.PatSynD {} -> lift errorNoNewName
+  TH.PatSynSigD {} -> lift errorNoNewName
 #if MIN_VERSION_template_haskell(2, 20, 0)
   TH.TypeDataD {} -> lift errorNoNewName
 #endif
@@ -605,10 +597,6 @@ dualizeDec' db coname = \case
 #endif
 #if MIN_VERSION_template_haskell(2, 15, 0)
   TH.ImplicitParamBindD {} -> lift errorNoNewName
-#endif
-#if MIN_VERSION_template_haskell(2, 12, 0)
-  TH.PatSynD {} -> lift errorNoNewName
-  TH.PatSynSigD {} -> lift errorNoNewName
 #endif
 
 -- | Creates both the original declaration and its dual. Should only work for

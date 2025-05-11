@@ -59,6 +59,13 @@
     cabalPackages = {"${config.project.name}" = config.project.name;};
     latestGhcVersion = "9.10.1";
     exclude = [
+      ## Fails to load libgmp.dylib.
+      {
+        bounds = "--prefer-oldest";
+        ghc = "8.6.1";
+        os = "macos-13";
+      }
+      ## FIXME: These should live in Flaky, only here for testing!
       {
         ghc = "9.4.1";
         os = "macos-14";

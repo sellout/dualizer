@@ -20,10 +20,6 @@ extra-doc-files:
   docs/*.md
 tested-with:
   GHC == {
-    7.10.3,
-    8.0.2,
-    8.2.2,
-    8.4.1,
     8.6.1,
     8.8.1,
     8.10.1, 8.10.7,
@@ -57,7 +53,7 @@ common GHC2024
     DeriveGeneric
     -- DeriveLift -- uncomment if the oldest supported version is GHC 8.10.1+
     DeriveTraversable
-    -- DerivingStrategies -- uncomment if the oldest supported version is GHC 8.2.1+
+    DerivingStrategies
     DisambiguateRecordFields
     DoAndIfThenElse
     EmptyCase
@@ -66,7 +62,7 @@ common GHC2024
     FlexibleInstances
     GADTs
     GeneralizedNewtypeDeriving
-    -- HexFloatLiterals -- uncomment if the oldest supported version is GHC 8.4.1+
+    HexFloatLiterals
     -- ImportQualifiedPost -- uncomment if the oldest supported version is GHC 8.10.1+
     InstanceSigs
     LambdaCase
@@ -76,7 +72,7 @@ common GHC2024
     MultiParamTypeClasses
     NamedFieldPuns
     NamedWildCards
-    -- NumericUnderscores -- uncomment if the oldest supported version is GHC 8.6.1+
+    NumericUnderscores
     PolyKinds
     PostfixOperators
     RankNTypes
@@ -85,7 +81,7 @@ common GHC2024
     StandaloneDeriving
     -- StandaloneKindSignatures -- uncomment if the oldest supported version is GHC 8.10.1+
     TupleSections
-    -- TypeApplications -- uncomment if the oldest supported version is GHC 8.0.1+
+    TypeApplications
     TypeOperators
     UnicodeSyntax
 
@@ -103,27 +99,18 @@ common defaults
   build-depends:
     base ^>= {4.8.2, 4.9.1, 4.10.1, 4.11.0, 4.12.0, 4.13.0, 4.14.0, 4.15.0, 4.16.0, 4.17.0, 4.18.0, 4.19.0, 4.20.0},
   ghc-options:
-  if impl(ghc >= 8.0.1)
+    -Weverything
+    -- This one just reports unfixable things, AFAICT.
+    -Wno-all-missed-specialisations
+    -- Type inference good.
+    -Wno-missing-local-signatures
+    -- Warns even when `Unsafe` is explicit, not inferred. See
+    -- https://gitlab.haskell.org/ghc/ghc/-/issues/16689
+    -Wno-unsafe
+  if impl(ghc < 8.8.1)
     ghc-options:
-      -Weverything
-      -- This one just reports unfixable things, AFAICT.
-      -Wno-all-missed-specialisations
-      -- Type inference good.
-      -Wno-missing-local-signatures
-      -- Warns even when `Unsafe` is explicit, not inferred. See
-      -- https://gitlab.haskell.org/ghc/ghc/-/issues/16689
-      -Wno-unsafe
-    if impl(ghc < 8.8.1)
-      ghc-options:
-        -- This used to warn even when `Safe` was explicit.
-        -Wno-safe
-  else
-    ghc-options:
-      -Wall
-  -- remove if the oldest supported version is GHC 8.2.1+
-  if impl(ghc >= 8.8.1)
-    ghc-options:
-      -Wno-missing-deriving-strategies
+      -- This used to warn even when `Safe` was explicit.
+      -Wno-safe
   -- remove if the oldest supported version is GHC 8.10.1+
   if impl(ghc >= 8.10.1)
     ghc-options:
@@ -139,7 +126,7 @@ common defaults
       -- Inference good.
       -Wno-missing-role-annotations
   default-extensions:
-    -- BlockArguments - uncomment if the oldest supported version is GHC 8.6.1+
+    BlockArguments
     DefaultSignatures
     ExplicitNamespaces
     FunctionalDependencies
@@ -151,17 +138,15 @@ common defaults
     -- QualifiedDo - uncomment if the oldest supported version is GHC 9.0.1+
     RecursiveDo
     -- RequiredTypeArguments - uncomment if the oldest supported version is GHC 9.10.1+
-    -- TemplateHaskellQuotes - uncomment if the oldest supported version is GHC 8.0.1+
+    StrictData
+    TemplateHaskellQuotes
     TransformListComp
     NoGeneralizedNewtypeDeriving
     NoImplicitPrelude
     NoMonomorphismRestriction
     NoPatternGuards
-    -- NoStarIsType - uncomment if the oldest supported version is GHC 8.6.1+
-    -- NoTypeApplications - uncomment if the oldest supported version is GHC 8.0.1+
-  if impl(ghc >= 8.0.1)
-    default-extensions:
-      StrictData
+    NoStarIsType
+    NoTypeApplications
   if flag(noisy-deprecations)
     cpp-options: -DSELLOUT_NOISY_DEPRECATIONS
 
@@ -188,10 +173,6 @@ library
     -- This is only a transitive dependency, but versions before this can fail
     -- to compile, depending on the dependency solver.
     -- contravariant >= 1.5.3,
-  -- "Data.Bitraversable" isn’t in base until GHC 8.2
-  if impl(ghc < 8.2.1)
-    build-depends:
-      bifunctor-classes-compat,
   exposed-modules:
     Categorical.Dual
     Categorical.Dual.Base
@@ -216,16 +197,10 @@ test-suite doctests
   -- TODO: The sections below here are necessary because we don’t have control
   --       over the generated `Build_doctests.hs` file. So we have to silence
   --       all of its warnings one way or another.
-  if impl(ghc >= 8.0.1)
-    ghc-options:
-      -Wno-missing-import-lists
-      -Wno-safe
-  else
-    ghc-options:
-      -fno-warn-missing-import-lists
-  if impl(ghc >= 8.4.1)
-    ghc-options:
-      -Wno-missing-export-lists
+  ghc-options:
+    -Wno-missing-export-lists
+    -Wno-missing-import-lists
+    -Wno-safe
   if impl(ghc >= 8.8.1)
     ghc-options:
       -Wno-missing-deriving-strategies
