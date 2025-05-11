@@ -30,10 +30,6 @@ module Categorical.Dual.Example
     DualA,
     TestB,
     DualB,
-#if !MIN_VERSION_GLASGOW_HASKELL(8, 8, 0, 0)
-    TestC,
-    DualC,
-#endif
     (>^>),
     (<^<),
     Mu (..),
@@ -75,7 +71,7 @@ import safe Data.Function (($))
 import safe Data.Functor (Functor, fmap)
 import safe Data.Int (Int)
 import safe Data.Traversable (Traversable)
-import safe qualified Data.Traversable as T
+import safe Data.Traversable qualified as T
 import safe Data.Void (Void)
 import safe Prelude (undefined)
 
@@ -165,14 +161,12 @@ makeDualDec [d|data family TestA a |] "DualA"
 makeDualDec [d|type family TestB a |] "DualB"
 
 -- FIXME: Complains “‘TestC_0’ is not in scope at a reify”
-#if !MIN_VERSION_GLASGOW_HASKELL(8, 8, 0, 0)
--- | Happens.
-makeDualDec
-  [d| type family TestC a where
-        TestC (Either b _c) = b
-        TestC Int = Char |]
-  "DualC"
-#endif
+-- -- | Happens.
+-- makeDualDec
+--   [d| type family TestC a where
+--         TestC (Either b _c) = b
+--         TestC Int = Char |]
+--   "DualC"
 
 -- | These docs are going to end up on `<^<`, which is not what I’d expect.
 makeDualDec

@@ -20,8 +20,6 @@ extra-doc-files:
   docs/*.md
 tested-with:
   GHC == {
-    8.6.1,
-    8.8.1,
     8.10.1, 8.10.7,
     9.0.1, 9.0.2,
     9.2.1, 9.2.5,
@@ -51,7 +49,7 @@ common GHC2024
     DataKinds
     DeriveDataTypeable
     DeriveGeneric
-    -- DeriveLift -- uncomment if the oldest supported version is GHC 8.10.1+
+    DeriveLift
     DeriveTraversable
     DerivingStrategies
     DisambiguateRecordFields
@@ -63,7 +61,7 @@ common GHC2024
     GADTs
     GeneralizedNewtypeDeriving
     HexFloatLiterals
-    -- ImportQualifiedPost -- uncomment if the oldest supported version is GHC 8.10.1+
+    ImportQualifiedPost
     InstanceSigs
     LambdaCase
     MagicHash
@@ -79,7 +77,7 @@ common GHC2024
     RoleAnnotations
     ScopedTypeVariables
     StandaloneDeriving
-    -- StandaloneKindSignatures -- uncomment if the oldest supported version is GHC 8.10.1+
+    StandaloneKindSignatures
     TupleSections
     TypeApplications
     TypeOperators
@@ -107,14 +105,6 @@ common defaults
     -- Warns even when `Unsafe` is explicit, not inferred. See
     -- https://gitlab.haskell.org/ghc/ghc/-/issues/16689
     -Wno-unsafe
-  if impl(ghc < 8.8.1)
-    ghc-options:
-      -- This used to warn even when `Safe` was explicit.
-      -Wno-safe
-  -- remove if the oldest supported version is GHC 8.10.1+
-  if impl(ghc >= 8.10.1)
-    ghc-options:
-      -Wno-prepositive-qualified-module
   -- remove if the oldest supported version is GHC 9.2.1+
   if impl(ghc >= 9.2.1)
     ghc-options:
@@ -188,22 +178,18 @@ test-suite doctests
   build-depends:
     doctest ^>= {0.16.0, 0.17.0, 0.18.0, 0.19.0, 0.20.0, 0.21.0, 0.22.0},
     dualizer,
-  if impl(ghc >= 8.10.1)
-    ghc-options:
-      -- `doctest` requires the package containing the doctests as a dependency
-      -- to ensure it gets built before this test-suite, even though the package
-      -- appears to be unused.
-      -Wno-unused-packages
   -- TODO: The sections below here are necessary because we don’t have control
   --       over the generated `Build_doctests.hs` file. So we have to silence
   --       all of its warnings one way or another.
   ghc-options:
+    -Wno-missing-deriving-strategies
     -Wno-missing-export-lists
     -Wno-missing-import-lists
     -Wno-safe
-  if impl(ghc >= 8.8.1)
-    ghc-options:
-      -Wno-missing-deriving-strategies
+    -- `doctest` requires the package containing the doctests as a dependency
+    -- to ensure it gets built before this test-suite, even though the package
+    -- appears to be unused.
+    -Wno-unused-packages
   default-extensions:
     -- Since we can’t add `{-# LANGUAGE Safe -#}` to the generated
     -- “Build_doctests.hs”, we set it here, and that means it has to match

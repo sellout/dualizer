@@ -136,8 +136,6 @@
         ## The versions that are older than those supported by Nix that we
         ## prefer to test against.
         nonNixTestedGhcVersions = [
-          "8.6.1"
-          "8.8.1"
           "8.10.1"
           "9.0.1"
           "9.2.1"
