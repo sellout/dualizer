@@ -95,7 +95,7 @@ flag noisy-deprecations
 common defaults
   import: GHC2024
   build-depends:
-    base ^>= {4.8.2, 4.9.1, 4.10.1, 4.11.0, 4.12.0, 4.13.0, 4.14.0, 4.15.0, 4.16.0, 4.17.0, 4.18.0, 4.19.0, 4.20.0},
+    base ^>= {4.14.0, 4.15.0, 4.16.0, 4.17.0, 4.18.0, 4.19.0, 4.20.0},
   ghc-options:
     -Weverything
     -- This one just reports unfixable things, AFAICT.
@@ -151,18 +151,10 @@ library
   import: defaults
   hs-source-dirs: src
   build-depends:
-    containers,
-    -- Dependencies of lens < 5 (contravariant & StateVar) have issues with Safe
-    -- Haskell, depending on exactly which combination of versions is selected.
-    -- lens ^>= {5, 5.1, 5.2, 5.3},
-    lens,
-    template-haskell,
-    -- Versions < 0.3 play fast-and-loose with Safe Haskell, breaking some
-    -- transitive dependencies (contravariant & StateVar show up in error messages).
-    transformers,
-    -- This is only a transitive dependency, but versions before this can fail
-    -- to compile, depending on the dependency solver.
-    -- contravariant >= 1.5.3,
+    containers ^>= {0.6.2, 0.7},
+    lens ^>= {4.19, 5, 5.1, 5.2, 5.3},
+    template-haskell ^>= {2.16.0, 2.17.0, 2.18.0, 2.19.0, 2.20.0, 2.21.0, 2.22.0},
+    transformers ^>= {0.5.6, 0.6.1},
   exposed-modules:
     Categorical.Dual
     Categorical.Dual.Base
@@ -176,7 +168,7 @@ test-suite doctests
   hs-source-dirs: tests
   main-is: doctests.hs
   build-depends:
-    doctest ^>= {0.16.0, 0.17.0, 0.18.0, 0.19.0, 0.20.0, 0.21.0, 0.22.0},
+    doctest ^>= {0.16.3, 0.18.1, 0.20.1, 0.21.1, 0.22.2},
     dualizer,
   -- TODO: The sections below here are necessary because we don’t have control
   --       over the generated `Build_doctests.hs` file. So we have to silence
