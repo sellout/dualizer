@@ -74,5 +74,6 @@
 
   ## publishing
   services.github.enable = true;
+  services.github.settings.repository.private = false;
   services.github.settings.repository.topics = [];
 }
